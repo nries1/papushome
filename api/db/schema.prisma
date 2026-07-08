@@ -4,21 +4,225 @@
 // Read more about both here:
 // https://www.prisma.io/docs/orm/prisma-migrate
 
+// Schema mirrors the pre-redwood `plants` database (dumped from papu-db-1) so the
+// new redwood-db instance can be seeded with the same data during the migration.
+// Not modeled here: `schema_migrations` (bookkeeping for the legacy Knex-style
+// migration runner in server/database/migrations, not application data).
+
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = "native"
+  provider        = "prisma-client-js"
+  binaryTargets   = "native"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
-// Define your own datamodels here and run `yarn redwood prisma migrate dev`
-// to create migrations for them and apply to your dev DB.
-// TODO: Please remove the following example:
-model UserExample {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
+model AiSummary {
+  id        Int      @id @default(autoincrement())
+  summary   String
+  timestamp DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("ai_summaries")
+}
+
+model ApiLog {
+  id             BigInt    @id @default(autoincrement())
+  requestBody    Json?     @map("request_body")
+  responseBody   Json?     @map("response_body")
+  responseTimeMs Int?      @map("response_time_ms")
+  timestamp      DateTime? @default(now()) @db.Timestamptz(6)
+  path           String?
+  statusCode     Int?      @map("status_code")
+
+  @@index([timestamp(sort: Desc)], map: "idx_api_logs_timestamp")
+  @@map("api_logs")
+}
+
+model AppLog {
+  id        Int      @id @default(autoincrement())
+  logLevel  String   @default("info") @map("log_level")
+  message   String
+  details   Json?
+  source    String?
+  timestamp DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([timestamp(sort: Desc)], map: "idx_app_logs_timestamp")
+  @@map("app_logs")
+}
+
+model ChatEval {
+  id             Int      @id @default(autoincrement())
+  sessionKey     String   @map("session_key")
+  question       String
+  response       String
+  responseTimeMs Int      @map("response_time_ms")
+  quality        Boolean?
+  correctness    Boolean?
+  timestamp      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([timestamp(sort: Desc)], map: "idx_chat_evals_timestamp")
+  @@map("chat_evals")
+}
+
+model ChatSession {
+  id         Int           @id @default(autoincrement())
+  sessionKey String        @unique @map("session_key")
+  startedAt  DateTime      @default(now()) @map("started_at") @db.Timestamptz(6)
+  endedAt    DateTime?     @map("ended_at") @db.Timestamptz(6)
+  summary    String?
+  personName String?       @map("person_name")
+  messages   ChatMessage[]
+
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id        Int         @id @default(autoincrement())
+  sessionId Int         @map("session_id")
+  role      String
+  content   String
+  timestamp DateTime    @default(now()) @db.Timestamptz(6)
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("chat_messages")
+}
+
+model DeviceLog {
+  id        Int      @id @default(autoincrement())
+  deviceId  String   @map("device_id")
+  logLevel  String   @map("log_level")
+  message   String
+  details   Json?
+  timestamp DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([timestamp(sort: Desc)], map: "idx_device_logs_timestamp")
+  @@map("device_logs")
+}
+
+model DevicePresence {
+  deviceId  String   @id @map("device_id")
+  ipAddress String?  @map("ip_address")
+  lastBoot  DateTime @default(now()) @map("last_boot") @db.Timestamptz(6)
+
+  @@map("device_presence")
+}
+
+model Room {
+  id                  Int                  @id @default(autoincrement())
+  name                String               @unique
+  displayName         String               @map("display_name")
+  devices             Device[]
+  environmentReadings EnvironmentReading[]
+
+  @@map("rooms")
+}
+
+model Device {
+  id              Int      @id @default(autoincrement())
+  deviceId        String   @unique @map("device_id")
+  model           String
+  friendlyName    String?  @map("friendly_name")
+  hardwareVersion String?  @map("hardware_version")
+  softwareVersion String?  @map("software_version")
+  status          String   @default("active")
+  metadata        Json?    @default("{}")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  roomId          Int?     @map("room_id")
+  deviceType      String   @default("unknown") @map("device_type")
+  hasOta          Boolean  @default(false) @map("has_ota")
+  config          Json     @default("{}")
+  room            Room?    @relation(fields: [roomId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([status], map: "idx_devices_status")
+  @@map("devices")
+}
+
+model EnvironmentReading {
+  id        BigInt   @id @default(autoincrement())
+  deviceId  String   @map("device_id")
+  readings  Json
+  timestamp DateTime @default(now()) @db.Timestamptz(6)
+  roomId    Int?     @map("room_id")
+  room      Room?    @relation(fields: [roomId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([readings], type: Gin, map: "environment_readings_readings_gin")
+  @@index([timestamp(sort: Desc)], map: "environment_readings_recorded_at_idx")
+  @@map("environment_readings")
+}
+
+model HardwareRelease {
+  id                 Int       @id @default(autoincrement())
+  versionString      String    @map("version_string") @db.VarChar(50)
+  releaseDate        DateTime? @default(now()) @map("release_date") @db.Timestamptz(6)
+  firmwareBinaryPath String?   @map("firmware_binary_path")
+  hardwareModel      String?   @default("Adafruit Metro ESP32-S3") @map("hardware_model") @db.VarChar(100)
+  notes              String?
+  uploadedBy         String?   @map("uploaded_by") @db.VarChar(100)
+
+  @@map("hardware_releases")
+}
+
+// `embedding` requires the pgvector extension (declared above via `extensions = [vector]`).
+// The HNSW index on this column can't be expressed in Prisma schema syntax and is
+// added by hand-editing the generated migration SQL (see migration.sql after
+// `yarn rw prisma migrate dev`).
+model HomeKnowledge {
+  id        Int                          @id @default(autoincrement())
+  subject   String
+  category  String
+  fact      String
+  updatedAt DateTime                     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  embedding Unsupported("vector(768)")?
+
+  @@map("home_knowledge")
+}
+
+// The old db had two identical unique constraints on (photo_filename, user_email)
+// (photo_reactions_photo_filename_user_email_key and _photo_user_uniq) -- collapsed
+// into one here since Prisma can't represent a literal duplicate constraint.
+model PhotoReaction {
+  id            Int       @id @default(autoincrement())
+  photoFilename String    @map("photo_filename")
+  userEmail     String    @map("user_email")
+  reaction      String
+  createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@unique([photoFilename, userEmail], map: "photo_reactions_photo_filename_user_email_key")
+  @@map("photo_reactions")
+}
+
+model TankReading {
+  id        Int       @id @default(autoincrement())
+  deviceId  String?   @map("device_id") @db.VarChar(50)
+  gallons   Decimal?  @db.Decimal(5, 2)
+  timestamp DateTime? @default(now()) @db.Timestamptz(6)
+  rawValue  Int?      @map("raw_value")
+  pctFull   Int?      @map("pct_full")
+
+  @@map("tank_readings")
+}
+
+model User {
+  email       String @id
+  displayName String @map("display_name")
+
+  @@map("users")
+}
+
+model WateringEvent {
+  id          Int       @id @default(autoincrement())
+  deviceId    String    @map("device_id") @db.VarChar(50)
+  timestamp   DateTime? @default(now()) @db.Timestamptz(6)
+  durationMs  Int       @map("duration_ms")
+  gallonsUsed Decimal?  @map("gallons_used") @db.Decimal(5, 2)
+  status      String?   @default("success") @db.VarChar(20)
+  startedBy   String?   @map("started_by") @db.VarChar(50)
+  action      String?   @db.VarChar(20)
+
+  @@map("watering_events")
 }

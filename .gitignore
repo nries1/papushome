@@ -22,3 +22,37 @@ api/src/lib/generateGraphiQLHeader.*
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+CLAUDE.md
+node_modules
+config.h
+.env
+
+# SSH keys that Ollama generates at runtime
+ollama/id_ed25519*
+*id_ed25519*
+secure-private-storage/
+models
+mosquitto.db
+
+# Robot vision — face encodings are runtime data, not source
+robot-vision-worker/known_faces/*.pkl
+
+ollama/
+
+.venv
+
+# TypeScript build output
+server/dist/
+
+LAUNCH.md
+robot.md
+logging.md
+
+**/.pio/
+
+ota_err.txt
+ota_out.txt
+mosquitto/log/mosquitto.log
+
+# Home Assistant runtime config (contains secrets and auth tokens)
+homeassistant/config/

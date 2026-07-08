@@ -7,5 +7,6 @@
   },
   "[prisma]": {
     "editor.formatOnSave": true
-  }
+  },
+  "prisma.pinToPrisma6": true
 }
