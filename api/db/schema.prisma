@@ -29,31 +29,6 @@ model AiSummary {
   @@map("ai_summaries")
 }
 
-model ApiLog {
-  id             BigInt    @id @default(autoincrement())
-  requestBody    Json?     @map("request_body")
-  responseBody   Json?     @map("response_body")
-  responseTimeMs Int?      @map("response_time_ms")
-  timestamp      DateTime? @default(now()) @db.Timestamptz(6)
-  path           String?
-  statusCode     Int?      @map("status_code")
-
-  @@index([timestamp(sort: Desc)], map: "idx_api_logs_timestamp")
-  @@map("api_logs")
-}
-
-model AppLog {
-  id        Int      @id @default(autoincrement())
-  logLevel  String   @default("info") @map("log_level")
-  message   String
-  details   Json?
-  source    String?
-  timestamp DateTime @default(now()) @db.Timestamptz(6)
-
-  @@index([timestamp(sort: Desc)], map: "idx_app_logs_timestamp")
-  @@map("app_logs")
-}
-
 model ChatEval {
   id             Int      @id @default(autoincrement())
   sessionKey     String   @map("session_key")
@@ -125,11 +100,11 @@ model Device {
   id              Int      @id @default(autoincrement())
   deviceId        String   @unique @map("device_id")
   model           String
-  friendlyName    String?  @map("friendly_name")
-  hardwareVersion String?  @map("hardware_version")
+  friendlyName    String   @map("friendly_name")
+  hardwareVersion String   @map("hardware_version")
   softwareVersion String?  @map("software_version")
   status          String   @default("active")
-  metadata        Json?    @default("{}")
+  metadata        Json     @default("{}")
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
   roomId          Int?     @map("room_id")

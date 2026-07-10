@@ -3,6 +3,7 @@
     "noEmit": true,
     "allowJs": true,
     "esModuleInterop": true,
+    "resolveJsonModule": true,
     "target": "ES2023",
     "module": "Node16",
     "moduleResolution": "Node16",
@@ -21,6 +22,7 @@
     "src",
     "../.redwood/types/includes/all-*",
     "../.redwood/types/includes/api-*",
-    "../types"
+    "../types",
+    "../shared"
   ]
 }

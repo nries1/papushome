@@ -8,10 +8,34 @@ describe('requireAuth directive', () => {
     expect(getDirectiveName(requireAuth.schema)).toBe('requireAuth')
   })
 
-  it('requireAuth has stub implementation. Should not throw when current user', () => {
-    // If you want to set values in context, pass it through e.g.
-    // mockRedwoodDirective(requireAuth, { context: { currentUser: { id: 1, name: 'Lebron McGretzky' } }})
+  it('throws when there is no current user', () => {
     const mockExecution = mockRedwoodDirective(requireAuth, { context: {} })
+
+    expect(mockExecution).toThrowError()
+  })
+
+  it('does not throw when a current user is present', () => {
+    const mockExecution = mockRedwoodDirective(requireAuth, {
+      context: { currentUser: { email: 'nries1@gmail.com', roles: ['admin'] } },
+    })
+
+    expect(mockExecution).not.toThrowError()
+  })
+
+  it('throws when the current user lacks a required role', () => {
+    const mockExecution = mockRedwoodDirective(requireAuth, {
+      directiveArgs: { roles: ['admin'] },
+      context: { currentUser: { email: 'family@example.com', roles: [] } },
+    })
+
+    expect(mockExecution).toThrowError()
+  })
+
+  it('does not throw when the current user has a required role', () => {
+    const mockExecution = mockRedwoodDirective(requireAuth, {
+      directiveArgs: { roles: ['admin'] },
+      context: { currentUser: { email: 'nries1@gmail.com', roles: ['admin'] } },
+    })
 
     expect(mockExecution).not.toThrowError()
   })
