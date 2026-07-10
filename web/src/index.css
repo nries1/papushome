@@ -1,0 +1,20 @@
+@import 'tailwindcss';
+
+/*
+ * Named colors matching html/css/dashboard.css's CSS custom properties, so
+ * pages ported from that stylesheet (rather than the Tailwind-CDN pages)
+ * keep their exact palette as Tailwind utility classes.
+ */
+@theme {
+  --color-dash-bg: #0f172a;
+  --color-dash-card: rgba(30, 41, 59, 0.7);
+  --color-dash-accent-blue: #38bdf8;
+  --color-dash-accent-green: #4ade80;
+  --color-dash-accent-red: #fb7185;
+  --color-dash-text-main: #f8fafc;
+  --color-dash-text-dim: #94a3b8;
+}
+
+body {
+  @apply bg-slate-900 text-white;
+}

@@ -5,6 +5,8 @@ export const schema = gql`
     model: String!
     friendlyName: String!
     hardwareVersion: String!
+    deviceType: String!
+    hasOta: Boolean!
     status: String!
     metadata: JSON!
     room: Room
@@ -23,6 +25,8 @@ export const schema = gql`
     model: String!
     friendlyName: String!
     hardwareVersion: String!
+    deviceType: String!
+    hasOta: Boolean!
     roomId: Int
     config: JSON!
   }
