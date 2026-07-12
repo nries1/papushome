@@ -1,0 +1,40 @@
+# Builds and serves the RedwoodJS app (api + web) as a single process via
+# `yarn rw serve` — one image/container replaces nginx + the old server/ api.
+# package.json pins engines.node to exactly 20.x; Prisma's generator uses
+# binaryTargets = "native", so generate and runtime must share this image.
+FROM node:20-bookworm-slim AS redwood
+
+WORKDIR /app
+
+# Prisma's query/schema engine binaries link against libssl at runtime —
+# the bare -slim image doesn't ship it, which surfaces as an opaque
+# "Schema engine error" with no detail during `prisma migrate deploy`.
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN corepack enable
+
+# Manifests first so `yarn install` is cached unless a package.json/yarn.lock
+# actually changed, independent of application source edits.
+COPY package.json yarn.lock .yarnrc.yml redwood.toml ./
+COPY api/package.json api/package.json
+COPY web/package.json web/package.json
+
+RUN yarn install --immutable
+
+COPY . .
+
+RUN yarn rw build
+
+ENV NODE_ENV=production
+EXPOSE 8911
+
+# migrate deploy only applies already-committed migrations (including the
+# hand-edited pgvector/HNSW ones) — it's a no-op when nothing's pending, safe
+# to run on every deploy rather than as a separate manual step.
+#
+# `serve api` only, not the combined `serve` — api/src/server.ts serves the
+# built web assets itself (see comment there), so a separate web process
+# on its own port isn't needed.
+CMD ["sh", "-c", "yarn rw prisma migrate deploy && yarn rw serve api"]

@@ -1,8 +1,19 @@
+import fs from 'fs'
+import path from 'path'
+
+import fastifyStatic from '@fastify/static'
 import { createServer } from '@redwoodjs/api-server'
 
 import { logger } from 'src/lib/logger'
 import { visionListeners } from 'src/lib/mqtt'
 
+// `yarn rw serve` (no side arg) runs web and api as two separate Fastify
+// processes on two ports (8910/8911) — self-hosting docs assume you put a
+// reverse proxy in front of both. We don't want a second moving piece for
+// that, so instead this app is run as `yarn rw serve api` only, and the
+// built web static assets are served from this same Fastify instance below
+// — one process, one port, replacing nginx entirely.
+//
 // Replaces the old GET /api/vision/stream Express route (SSE). SSE needs to
 // hold the raw HTTP response open and write to it later, which Redwood's
 // Lambda-style Function handlers can't do — they return one response and
@@ -56,6 +67,44 @@ async function main() {
         reply.raw.write(': connected\n\n')
         visionListeners.add(reply.raw)
         request.raw.on('close', () => visionListeners.delete(reply.raw))
+      })
+
+      // Serves web/dist. `yarn rw serve api` runs from api/dist, not the
+      // repo root, so this has to be relative to this file's build location
+      // rather than cwd (process.cwd() here resolved to api/dist, not the
+      // app root — found by actually running the container, not by
+      // inspection). wildcard: false because dispatch is handled by the
+      // onRequest hook below instead of this plugin's own catch-all route.
+      const webDist = path.join(__dirname, '..', '..', 'web', 'dist')
+      server.register(fastifyStatic, { root: webDist, wildcard: false })
+
+      // Redwood's own function-discovery router registers a parametric
+      // `/:routeName` route that beats a plugin's `/*` wildcard under
+      // Fastify's routing precedence (static > parametric > wildcard) —
+      // confirmed by testing, not assumed: GET /devices returned Redwood's
+      // own `Function "devices" was not found.` 404 body, meaning it was
+      // matching and handling the request itself rather than falling
+      // through to fastifyStatic or a notFoundHandler. So instead of
+      // relying on route precedence, an onRequest hook (runs before
+      // routing) intercepts every GET that isn't a known api path and
+      // serves it directly — real static files as themselves, anything
+      // else (client-side React Router routes) falls back to index.html.
+      const apiPaths = new Set([
+        '/graphql',
+        '/vision/stream',
+        ...fs
+          .readdirSync(path.join(__dirname, 'functions'))
+          .filter((f) => f.endsWith('.js'))
+          .map((f) => '/' + f.replace(/\.js$/, '')),
+      ])
+      server.addHook('onRequest', async (request, reply) => {
+        if (request.method !== 'GET') return
+        const url = (request.raw.url ?? '/').split('?')[0]
+        if (apiPaths.has(url)) return
+
+        const requested = path.join(webDist, url)
+        const isRealFile = fs.existsSync(requested) && fs.statSync(requested).isFile()
+        await reply.sendFile(isRealFile ? url.slice(1) : 'index.html')
       })
     },
   })

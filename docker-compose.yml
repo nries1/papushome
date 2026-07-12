@@ -8,29 +8,10 @@ services:
       - WEB_AGENT_PORT=3001
     restart: unless-stopped
 
-  # The web server
-  nginx:
-    image: nginx:latest
-    ports: ['80:80']
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./html:/usr/share/nginx/html:ro
-      - ./secure-private-storage:/app/secure-private-storage:ro
-
-  # Your plant-node API (collecting data from the ESP32)
-  api:
-    build:
-      context: .
-      dockerfile: server/Dockerfile
-    volumes:
-      - ./secure-private-storage:/app/secure-private-storage
-      - ./shared:/app/server/shared
-    env_file:
-      - .env
-    ports:
-      - '5000:5000'
-
-  # The Database (PostgreSQL is great for time-series sensor data)
+  # The old pre-redwood database. No service in this compose file reads from
+  # it anymore now that `api`/`nginx` are retired in favor of `redwood` below
+  # — kept around (not deleted) as a rollback safety net until the cutover
+  # has been running cleanly for a while. Safe to remove once confident.
   db:
     image: pgvector/pgvector:pg15
     environment:
@@ -41,9 +22,9 @@ services:
       # Format: [Volume Name]:[Path Inside Container]
       - postgres_data:/var/lib/postgresql/data
 
-  # Separate Postgres instance for the RedwoodJS/Prisma migration. Kept apart from
-  # `db` so the legacy server/ API keeps running against `db` unmodified while data
-  # is copied over and services are cut over incrementally.
+  # Postgres for the RedwoodJS/Prisma app. Port published to the host for
+  # local `yarn rw dev` convenience; the `redwood` service below talks to it
+  # over the compose network instead.
   redwood-db:
     image: pgvector/pgvector:pg15
     environment:
@@ -54,6 +35,28 @@ services:
       - '5433:5432'
     volumes:
       - redwood_postgres_data:/var/lib/postgresql/data
+
+  # The RedwoodJS app — api (GraphQL + functions) and web (built static
+  # assets) served together by `yarn rw serve` on one port. Replaces
+  # nginx + the old server/ api entirely (see redwoodmigration.md).
+  redwood:
+    build:
+      context: .
+      dockerfile: Dockerfile.redwood
+    depends_on:
+      - redwood-db
+    env_file:
+      - .env
+    environment:
+      # Overrides .env's host-oriented DATABASE_URL (localhost:5433, for
+      # `yarn rw dev` run directly on the host) with the compose-network
+      # address of redwood-db.
+      DATABASE_URL: postgresql://${REDWOOD_POSTGRES_USER}:${REDWOOD_POSTGRES_PASSWORD}@redwood-db:5432/${REDWOOD_POSTGRES_DB}
+    volumes:
+      - ./secure-private-storage:/app/secure-private-storage
+    ports:
+      - '8911:8911'
+    restart: unless-stopped
 
   # The Hardware Builder (Utility container)
   hardware-builder:

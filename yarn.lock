@@ -2586,7 +2586,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@fastify/static@npm:6.12.0":
+"@fastify/static@npm:6.12.0, @fastify/static@npm:^6.12.0":
   version: 6.12.0
   resolution: "@fastify/static@npm:6.12.0"
   dependencies:
@@ -6917,6 +6917,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "api@workspace:api"
   dependencies:
+    "@fastify/static": "npm:^6.12.0"
     "@redwoodjs/api": "npm:8.9.0"
     "@redwoodjs/api-server": "npm:8.9.0"
     "@redwoodjs/graphql-server": "npm:8.9.0"
