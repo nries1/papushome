@@ -4,7 +4,7 @@ import { useMutation } from '@redwoodjs/web'
 
 import Modal from 'src/components/Modal/Modal'
 
-import { UPDATE_DEVICE_CONFIG_MUTATION } from './queries'
+import { UPDATE_DEVICE_CONFIG_MUTATION } from './mutations'
 import type { DeviceWithStatus } from './types'
 
 const inputClass =
@@ -14,11 +14,9 @@ const labelClass = 'block text-xs uppercase tracking-wide text-slate-400 mb-1.5'
 export default function DeviceConfigModal({
   device,
   onClose,
-  onSaved,
 }: {
   device: DeviceWithStatus
   onClose: () => void
-  onSaved: () => void
 }) {
   const [capacity, setCapacity] = useState(String(device.config?.tank_capacity_gallons ?? 30))
   const [calibGallonsInput, setCalibGallonsInput] = useState('')
@@ -31,10 +29,8 @@ export default function DeviceConfigModal({
   const tank = device.latestTankReading
 
   const [updateDeviceConfig, { loading }] = useMutation(UPDATE_DEVICE_CONFIG_MUTATION, {
-    onCompleted: () => {
-      onSaved()
-      onClose()
-    },
+    refetchQueries: ['DevicesWithStatusQuery'],
+    onCompleted: () => onClose(),
     onError: (err) => setError(err.message),
   })
 

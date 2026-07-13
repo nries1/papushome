@@ -20,14 +20,13 @@ export const schema = gql`
 
   input UpsertPhotoReactionInput {
     photoFilename: String!
-    userEmail: String!
     reaction: String!
   }
 
   type Mutation {
     upsertPhotoReaction(input: UpsertPhotoReactionInput!): PhotoReaction!
       @requireAuth
-    removePhotoReaction(photoFilename: String!, userEmail: String!): Boolean!
+    removePhotoReaction(photoFilename: String!): Boolean!
       @requireAuth
   }
 `

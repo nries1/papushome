@@ -23,6 +23,7 @@ export const createPhoto: NonNullable<
 
   return {
     filename: storedFilename,
-    url: `/.redwood/functions/media?filename=${encodeURIComponent(storedFilename)}`,
+    // Bare path — see the matching comment in services/photos/get.ts.
+    url: `/media?filename=${encodeURIComponent(storedFilename)}`,
   }
 }

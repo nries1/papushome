@@ -8,7 +8,12 @@
 [web]
   title = "Redwood App"
   port = 8910
-  apiUrl = "/.redwood/functions" # You can customize graphql and dbauth urls individually too: see https://redwoodjs.com/docs/app-configuration-redwood-toml#api-paths
+  # Default "/.redwood/functions" assumes a reverse proxy (or Netlify-style
+  # rewrite) maps that prefix to the api process. This app instead runs one
+  # custom Fastify process (api/src/server.ts) that mounts graphql/functions
+  # at bare paths with no prefix — so the built web bundle must call those
+  # same bare paths, or every API call 404s / silently hits the SPA fallback.
+  apiUrl = ""
   includeEnvironmentVariables = [
     # Add any ENV vars that should be available to the web side to this array
     # See https://redwoodjs.com/docs/environment-variables#web

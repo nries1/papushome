@@ -26,6 +26,11 @@ export interface DeviceConfig {
   [key: string]: unknown
 }
 
+// Kept distinct from the codegen'd `DevicesWithStatusQuery` type (which types
+// these two fields as the GraphQL `JSON` scalar's `Prisma.JsonValue`) so the
+// components below can access known keys directly instead of casting at
+// every call site — DevicesWithStatusCell casts once at the boundary where
+// the raw query data is available.
 export interface DeviceWithStatus {
   deviceId: string
   friendlyName: string

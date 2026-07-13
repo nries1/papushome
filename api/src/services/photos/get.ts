@@ -7,7 +7,11 @@ const IMAGE_EXTENSIONS = /\.(jpg|jpeg|png|gif)$/i
 
 const toPhoto = (filename: string) => ({
   filename,
-  url: `/.redwood/functions/media?filename=${encodeURIComponent(filename)}`,
+  // Bare path, matching how api/src/server.ts actually mounts Functions in
+  // this app's single-process deploy (see redwood.toml's apiUrl comment) —
+  // not the "/.redwood/functions" prefix that assumes a rewrite proxy in
+  // front, which this app doesn't have.
+  url: `/media?filename=${encodeURIComponent(filename)}`,
 })
 
 export const photos: NonNullable<QueryResolvers['photos']> = async ({

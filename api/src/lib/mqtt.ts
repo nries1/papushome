@@ -70,6 +70,24 @@ async function getRoomIdForDevice(deviceId: string): Promise<number | null> {
   }
 }
 
+// SSE clients (/vision/stream) need to tell the two vision topics apart —
+// the raw MQTT payloads have no topic field of their own — so both are
+// wrapped with a `type` discriminator rather than forwarded as-is. Only
+// `result` was forwarded before this; `tracking` (the fast Haar-cascade
+// pan/tilt feed, published far more often than the CNN recognition result)
+// was silently dropped, which is fine for `serviceStatus` but breaks a
+// low-latency head-follow UI that needs it.
+function broadcastVision(type: 'tracking' | 'result', data: Record<string, unknown>): void {
+  const payload = JSON.stringify({ type, ...data })
+  for (const res of visionListeners) {
+    try {
+      res.write(`data: ${payload}\n\n`)
+    } catch {
+      visionListeners.delete(res)
+    }
+  }
+}
+
 client.on('connect', () => {
   serviceStatus.mqttConnected = true
   logger.info('Connected to MQTT Broker')
@@ -170,17 +188,12 @@ client.on('message', async (topic: string, message: Buffer) => {
 
   if (topic === 'robot/vision/result') {
     serviceStatus.lastVisionResult = new Date()
-    for (const res of visionListeners) {
-      try {
-        res.write(`data: ${messageStr}\n\n`)
-      } catch {
-        visionListeners.delete(res)
-      }
-    }
+    broadcastVision('result', data)
   }
 
   if (topic === 'robot/vision/tracking') {
     serviceStatus.lastPublisherFrame = new Date()
+    broadcastVision('tracking', data)
   }
 
   if (topic === SHARED.device_logs_topic) {

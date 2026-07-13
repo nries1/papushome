@@ -4,7 +4,7 @@ import { useMutation } from '@redwoodjs/web'
 
 import Modal from 'src/components/Modal/Modal'
 
-import { CREATE_DEVICE_MUTATION } from './queries'
+import { CREATE_DEVICE_MUTATION } from './mutations'
 import type { Room } from './types'
 
 const DEVICE_TYPES = [
@@ -20,11 +20,9 @@ const labelClass = 'block text-xs uppercase tracking-wide text-slate-400 mb-1.5'
 export default function AddDeviceModal({
   rooms,
   onClose,
-  onCreated,
 }: {
   rooms: Room[]
   onClose: () => void
-  onCreated: () => void
 }) {
   const [deviceId, setDeviceId] = useState('')
   const [friendlyName, setFriendlyName] = useState('')
@@ -36,10 +34,8 @@ export default function AddDeviceModal({
   const [error, setError] = useState<string | null>(null)
 
   const [createDevice, { loading }] = useMutation(CREATE_DEVICE_MUTATION, {
-    onCompleted: () => {
-      onCreated()
-      onClose()
-    },
+    refetchQueries: ['DevicesWithStatusQuery'],
+    onCompleted: () => onClose(),
     onError: (err) => setError(err.message),
   })
 

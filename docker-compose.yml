@@ -55,7 +55,7 @@ services:
     volumes:
       - ./secure-private-storage:/app/secure-private-storage
     ports:
-      - '8911:8911'
+      - '80:8911'
     restart: unless-stopped
 
   # The Hardware Builder (Utility container)
