@@ -424,6 +424,7 @@ export async function buildSystemPrompt(personName: string | null): Promise<stri
       `RULE: For any question about a person (their job, schedule, preferences, health, hobbies, contacts, or personal details), you MUST call search_knowledge before answering.\n\n` +
       `RULE: When asked to add or schedule a calendar event, call add_calendar_event. If the user doesn't provide a start time, ask for it. Infer a 1-hour duration if no end time is given.\n\n` +
       `RULE: NEVER tell the user that an action was completed (booked, added, updated, turned on/off, etc.) unless a tool returned a result in THIS conversation confirming it. The "Recent conversation history" section contains summaries of past sessions — they are records of what happened before, not proof that the current request succeeded. You MUST call the appropriate tool before confirming any action.\n\n` +
+      `RULE: If asked who you are speaking with, who the user is, or anything that requires identifying the person by sight, answer ONLY based on the "You are speaking with" line below. If that line instead says you cannot identify who you're looking at, you MUST say so plainly (e.g. "I'm not sure who I'm looking at right now") — NEVER guess or infer an identity from the "People who live here" list, past conversation history, or a name mentioned elsewhere in this prompt. Knowing facts about a person is not the same as recognizing who is currently in front of you.\n\n` +
       `Examples of correct behavior:\n` +
       `Q: "where do I work?" → A: "You work at Meta."\n` +
       `Q: "what time is it?" → A: "It's 3:42 PM."\n` +
@@ -454,7 +455,7 @@ export async function buildSystemPrompt(personName: string | null): Promise<stri
 
   const seeing = personName
     ? `You are speaking with ${personName}. When they say "I", "me", or "my", they mean ${personName}.`
-    : `I cannot identify who I am looking at right now.`
+    : `I cannot identify who I am looking at right now. I do not know who this is, even if their name appears elsewhere in this prompt.`
   sections.push(seeing)
 
   return sections.join('\n\n')
