@@ -1,6 +1,6 @@
 # Papu's Home
 
-A self-hosted home automation system built around ESP32 sensor nodes, an MQTT broker, a PostgreSQL-backed dashboard, and an AI robot head with face recognition and LLM responses.
+A self-hosted home automation system built around ESP32 sensor nodes, an MQTT broker, a RedwoodJS (GraphQL + Prisma + Postgres) dashboard, and an AI robot head with face recognition and LLM responses.
 
 ![Dashboard screenshot](docs/screenshot.png)
 
@@ -21,7 +21,7 @@ A self-hosted home automation system built around ESP32 sensor nodes, an MQTT br
 | Component         | Notes                                                 |
 | ----------------- | ----------------------------------------------------- |
 | Any Linux machine | Runs Docker Compose                                   |
-| NVIDIA GPU        | Optional — needed for face recognition and Ollama LLM |
+| NVIDIA GPU        | Optional — needed for face recognition, Ollama LLM, and TTS |
 
 ### ESP32 nodes
 
@@ -44,40 +44,44 @@ A self-hosted home automation system built around ESP32 sensor nodes, an MQTT br
 
 ## Quick start
 
-**Prerequisites:** Docker + Docker Compose, Node.js 18+
+**Prerequisites:** Docker + Docker Compose, Node.js 20.x, [Yarn 4](https://yarnpkg.com/getting-started/install) (via Corepack)
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/home.git
-cd home
+git clone git@github.com:nries1/papushome.git
+cd papushome
 
 # Copy config templates and fill in your values
 cp .env.example .env
 cp hardware/lib/shared/config.h.example hardware/lib/shared/config.h
 
-# Start the server stack (nginx, API, Postgres, MQTT)
-npm run up
+corepack enable
+yarn install
 
-# Initialize the database
-npm run db:migrate
+# Start the server stack (RedwoodJS app, Postgres, MQTT, Home Assistant, web-agents)
+docker compose up -d
 ```
+
+Database migrations run automatically on container start (`yarn rw prisma migrate deploy`, baked into the `redwood` service's entrypoint) — no separate migrate step needed for Docker.
 
 The dashboard is now at `http://YOUR_SERVER_IP`.
 
-**With a GPU** (face recognition + LLM):
+**With a GPU** (face recognition, LLM, and TTS):
 
 ```bash
 docker compose --profile gpu up -d
 ```
 
-**Enroll a face** (from the machine with the webcam):
+This additionally starts `ollama` (LLM), `kokoro` (TTS), and `robot-vision-worker` (face recognition).
+
+**Enroll a face** (from the machine with the webcam or a directory of photos):
 
 ```bash
-npm run vision:enroll -- <userId> <displayName> /path/to/photos/
+./scripts/enroll_face.sh <name> /path/to/photos/
 ```
 
-This trains the face recognition model and registers the display name in the database. The robot will greet that person by their display name when they appear on camera.
+This trains the face recognition model. The robot will address that person by `<name>` when they appear on camera.
 
-See [SETUP.md](SETUP.md) for firmware flashing, full face enrollment options, and troubleshooting.
+See [SETUP.md](SETUP.md) for local development, firmware flashing, full face enrollment options, and troubleshooting.
 
 ---
 
@@ -85,10 +89,10 @@ See [SETUP.md](SETUP.md) for firmware flashing, full face enrollment options, an
 
 ```
 ESP32 nodes
-  └─ MQTT (mosquitto) ──► Node.js API ──► PostgreSQL
+  └─ MQTT (mosquitto) ──► RedwoodJS API (GraphQL) ──► Postgres (redwood-db)
                                │
-                           nginx (port 80)
-                           Web dashboard
+                           RedwoodJS web (React), served on port 80
+                           by the same process as the API
 
 MacBook webcam
   ├─ Haar detection → robot/vision/tracking  (pan/tilt, low latency)
@@ -98,30 +102,33 @@ MacBook webcam
                            │
                      robot/vision/result  (name, confidence)
                            │
-                     Ollama (llama3.2) ──► TTS greeting
+                     Ollama (llama3.2) ──► kokoro TTS ──► greeting
 ```
 
 ### Services
 
-| Service               | Port        | Description                        |
-| --------------------- | ----------- | ---------------------------------- |
-| `nginx`               | 80          | Static dashboard                   |
-| `api`                 | 5000        | Node.js/Express REST API           |
-| `db`                  | —           | PostgreSQL 15                      |
-| `mqtt-broker`         | 1883 / 9001 | Eclipse Mosquitto                  |
-| `ollama`              | 11434       | Local LLM (GPU profile)            |
-| `robot-vision-worker` | —           | CNN face recognition (GPU profile) |
+| Service               | Port        | Description                                                 |
+| ---------------------- | ----------- | ------------------------------------------------------------ |
+| `redwood`              | 80 (→ 8911) | RedwoodJS app — GraphQL API + built web assets, one process  |
+| `redwood-db`           | 5433        | Postgres 15 + pgvector, backs the RedwoodJS/Prisma app        |
+| `mqtt-broker`          | 1883 / 9001 | Eclipse Mosquitto                                             |
+| `web-agents`           | 3001        | Playwright/Express service for scripted bookings (MindBody)   |
+| `homeassistant`        | 8123        | Home Assistant                                                |
+| `ollama`               | 11434       | Local LLM (GPU profile)                                       |
+| `kokoro`               | —           | Local TTS (GPU profile)                                       |
+| `robot-vision-worker`  | —           | CNN face recognition (GPU profile)                             |
+| `db`                   | —           | Legacy pre-Redwood Postgres, kept as a rollback safety net     |
 
 ---
 
 ## Stack
 
 - **Firmware:** C++ / Arduino (PlatformIO)
-- **Backend:** Node.js, Express, Kysely, PostgreSQL
-- **Frontend:** Vanilla JS, Tailwind CSS
+- **Backend:** RedwoodJS (GraphQL API), Prisma ORM, PostgreSQL + pgvector
+- **Frontend:** RedwoodJS web (React), Tailwind CSS
 - **Vision:** Python, dlib, OpenCV, CUDA
-- **LLM:** Ollama (`llama3.2`)
-- **Infra:** Docker Compose, Mosquitto MQTT, nginx, Cloudflare Access (optional)
+- **LLM / TTS:** Ollama (`llama3.2`), kokoro
+- **Infra:** Docker Compose, Mosquitto MQTT, Cloudflare Access (optional)
 
 ---
 
