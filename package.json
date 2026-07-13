@@ -14,7 +14,7 @@
     "validate:types": "yarn rw type-check api",
     "migrate": "yarn rw prisma migrate dev",
     "deploy": "./deploy.sh",
-    "deploy:remote": "env-cmd -f .env ssh $SSH_IP 'cd ~/papushome && ./deploy.sh'"
+    "deploy:remote": "env-cmd -f .env bash -c 'ssh \"$SSH_IP\" \"cd ~/papushome && ./deploy.sh\"'"
   },
   "devDependencies": {
     "@redwoodjs/core": "8.9.0",
