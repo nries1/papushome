@@ -7,7 +7,14 @@
     ]
   },
   "scripts": {
-    "gql": "yarn rw g types"
+    "dev": "yarn redwood dev",
+    "storybook": "yarn rw storybook",
+    "test": "yarn rw test",
+    "gql": "yarn rw g types",
+    "validate:types": "yarn rw type-check api",
+    "migrate": "yarn rw prisma migrate dev",
+    "deploy": "./deploy.sh",
+    "deploy:remote": "env-cmd -f .env ssh $SSH_IP 'cd ~/papushome && ./deploy.sh'"
   },
   "devDependencies": {
     "@redwoodjs/core": "8.9.0",
@@ -26,5 +33,8 @@
   "packageManager": "yarn@4.6.0",
   "resolutions": {
     "@storybook/react-dom-shim@npm:7.6.20": "https://verdaccio.tobbe.dev/@storybook/react-dom-shim/-/react-dom-shim-8.0.8.tgz"
+  },
+  "dependencies": {
+    "env-cmd": "^11.0.0"
   }
 }
