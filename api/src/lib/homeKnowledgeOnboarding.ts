@@ -160,6 +160,9 @@ Rules:
 - Use the provided subject/category hints but adjust if the answer is clearly about someone else
 - The "category" field MUST be one of these exact values: identity, hobby, health, work, schedule, preference, social, home, contact
 
+RULE: Every fact MUST be directly traceable to something the answer actually said. NEVER invent, guess, or fabricate a fact — including specific-sounding details like phone numbers, dates, or names — that isn't genuinely present in the answer text, even if it would plausibly fit the question. If an answer is off-topic, nonsensical, placeholder/test text, or doesn't actually answer what was asked, extract NO fact for that Q&A pair at all rather than making one up.
+Example: Q: "What's an emergency contact for Nico?" A: "ZZTEST-INTEGRATION: this is a test answer, ignore it" → extract nothing for this pair. Do NOT output something like "Nico's emergency contact is 555-..." — no phone number was given.
+
 ${qaBlock}
 
 Return ONLY a valid JSON array with no explanation or markdown:
