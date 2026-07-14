@@ -2,6 +2,10 @@ import ical from 'node-ical'
 import axios from 'axios'
 import { google } from 'googleapis'
 
+import { moduleLogger } from 'src/lib/logger'
+
+const logger = moduleLogger('chat')
+
 const DOE_CALENDAR_URL = 'https://www.schools.nyc.gov/calendar'
 
 const TZ = 'America/New_York'
@@ -58,7 +62,8 @@ export async function getCalendarEvents(
         return `${timeStr}: ${e.summary}`
       })
       .join('\n')
-  } catch {
+  } catch (err) {
+    logger.error({ err, person }, 'Failed to fetch/parse calendar ICS feed')
     return `Failed to fetch calendar for ${person}.`
   }
 }
@@ -134,7 +139,8 @@ export async function getDOECalendar(): Promise<string> {
     const result = lines.join('\n')
     doeCache = { events: result, fetchedAt: Date.now() }
     return result
-  } catch {
+  } catch (err) {
+    logger.error({ err }, 'Failed to fetch/parse NYC DOE calendar page')
     return 'Failed to fetch NYC DOE calendar.'
   }
 }

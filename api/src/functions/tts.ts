@@ -2,6 +2,9 @@ import axios from 'axios'
 import type { APIGatewayEvent, Context } from 'aws-lambda'
 
 import { getCurrentUserFromEvent } from 'src/lib/auth'
+import { moduleLogger } from 'src/lib/logger'
+
+const logger = moduleLogger('graphql')
 
 // Replaces the old POST /api/tts Express route (Kokoro TTS proxy, returns
 // raw audio/mpeg bytes — same reasoning as media.ts for why this is a
@@ -23,7 +26,8 @@ export const handler = async (event: APIGatewayEvent, _context: Context) => {
     const body = JSON.parse(event.body ?? '{}') as { text?: string; voice?: string }
     text = body.text
     voice = body.voice
-  } catch {
+  } catch (err) {
+    logger.warn({ err }, 'tts: invalid JSON body')
     return { statusCode: 400, body: JSON.stringify({ error: 'Invalid JSON body' }) }
   }
 
@@ -43,7 +47,8 @@ export const handler = async (event: APIGatewayEvent, _context: Context) => {
       body: Buffer.from(ttsRes.data as ArrayBuffer).toString('base64'),
       isBase64Encoded: true,
     }
-  } catch {
+  } catch (err) {
+    logger.error({ err }, 'tts: Kokoro request failed')
     return {
       statusCode: 503,
       headers: { 'Content-Type': 'application/json' },

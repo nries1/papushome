@@ -67,7 +67,8 @@ async function getRoomIdForDevice(deviceId: string): Promise<number | null> {
       select: { roomId: true },
     })
     return device?.roomId ?? null
-  } catch {
+  } catch (err) {
+    logger.error({ err, deviceId }, 'Failed to look up room for device')
     return null
   }
 }
@@ -84,7 +85,10 @@ function broadcastVision(type: 'tracking' | 'result', data: Record<string, unkno
   for (const res of visionListeners) {
     try {
       res.write(`data: ${payload}\n\n`)
-    } catch {
+    } catch (err) {
+      // Expected: the client closed the SSE connection. Debug, not error —
+      // this is routine cleanup, not a failure.
+      logger.debug({ err }, 'Dropping closed /vision/stream listener')
       visionListeners.delete(res)
     }
   }
@@ -129,7 +133,10 @@ client.on('message', async (topic: string, message: Buffer) => {
   let data: Record<string, unknown>
   try {
     data = JSON.parse(messageStr) as Record<string, unknown>
-  } catch {
+  } catch (err) {
+    // Not every topic publishes JSON — debug, not error, but worth a trace
+    // for diagnosing an unexpectedly malformed payload on a topic that should.
+    logger.debug({ err, topic }, 'Non-JSON MQTT payload, passing through raw')
     data = { raw: messageStr }
   }
 

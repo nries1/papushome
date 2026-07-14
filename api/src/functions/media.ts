@@ -4,6 +4,9 @@ import path from 'path'
 import type { APIGatewayEvent, Context } from 'aws-lambda'
 
 import { getCurrentUserFromEvent } from 'src/lib/auth'
+import { moduleLogger } from 'src/lib/logger'
+
+const logger = moduleLogger('graphql')
 
 // Serves one image from UPLOAD_PATH by filename, replacing the old
 // `GET /api/media/:filename` Express route. Not wired into the GraphQL
@@ -47,7 +50,12 @@ export const handler = async (event: APIGatewayEvent, _context: Context) => {
       body: data.toString('base64'),
       isBase64Encoded: true,
     }
-  } catch {
+  } catch (err) {
+    // ENOENT (file genuinely doesn't exist) is a routine, expected 404 —
+    // anything else (permissions, a bad mount, etc.) is worth a trace.
+    if ((err as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+      logger.warn({ err, filename }, 'media: unexpected error reading file')
+    }
     return { statusCode: 404, body: 'Not found' }
   }
 }

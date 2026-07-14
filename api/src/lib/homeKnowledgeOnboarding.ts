@@ -1,7 +1,10 @@
 import { ollamaChat } from 'src/lib/ollama'
 import { db } from 'src/lib/db'
+import { moduleLogger } from 'src/lib/logger'
 import { createHomeKnowledge } from 'src/services/homeKnowledge/create'
 import { getAllHomeKnowledgeRows } from 'src/services/homeKnowledge/get'
+
+const logger = moduleLogger('chat')
 
 export interface CoverageTarget {
   category: string
@@ -74,7 +77,8 @@ async function getHouseholdMembers(): Promise<string[]> {
   try {
     const rows = await db.user.findMany({ select: { displayName: true } })
     return rows.map((r) => r.displayName)
-  } catch {
+  } catch (err) {
+    logger.error({ err }, 'Failed to load household members')
     return []
   }
 }
@@ -126,10 +130,14 @@ Return ONLY a valid JSON array with no explanation or markdown:
   try {
     const raw = await ollamaChat([{ role: 'user', content: prompt }])
     const match = raw.match(/\[[\s\S]*\]/)
-    if (!match) return []
+    if (!match) {
+      logger.warn({ raw }, 'generateQuestions: model reply had no JSON array')
+      return []
+    }
     const parsed = JSON.parse(match[0])
     return Array.isArray(parsed) ? parsed.slice(0, 10) : []
-  } catch {
+  } catch (err) {
+    logger.error({ err }, 'generateQuestions: failed to get/parse questions from model')
     return []
   }
 }
@@ -171,7 +179,10 @@ Return ONLY a valid JSON array with no explanation or markdown:
   try {
     const raw = await ollamaChat([{ role: 'user', content: prompt }])
     const match = raw.match(/\[[\s\S]*\]/)
-    if (!match) return { saved: 0, facts: [] }
+    if (!match) {
+      logger.warn({ raw }, 'processAnswers: model reply had no JSON array')
+      return { saved: 0, facts: [] }
+    }
     const parsed: Array<{ subject: string; category: string; fact: string }> = JSON.parse(match[0])
     if (!Array.isArray(parsed)) return { saved: 0, facts: [] }
 
@@ -181,13 +192,15 @@ Return ONLY a valid JSON array with no explanation or markdown:
         try {
           await createHomeKnowledge({ input: { subject: f.subject, category: f.category, fact: f.fact } })
           saved++
-        } catch {
+        } catch (err) {
           // skip facts that fail to save, matching old dao's per-row success check
+          logger.warn({ err, fact: f }, 'processAnswers: failed to save one extracted fact')
         }
       }
     }
     return { saved, facts: parsed }
-  } catch {
+  } catch (err) {
+    logger.error({ err }, 'processAnswers: failed to get/parse facts from model')
     return { saved: 0, facts: [] }
   }
 }

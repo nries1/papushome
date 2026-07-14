@@ -1,10 +1,13 @@
 import axios from 'axios'
 
 import { db } from 'src/lib/db'
+import { moduleLogger } from 'src/lib/logger'
 import { createWateringEvent } from 'src/services/wateringEvents/create'
 import { publishWaterCommand } from 'src/lib/mqtt'
 
 import SHARED from '../../../shared/plant_config.json'
+
+const logger = moduleLogger('chat')
 
 const HA_URL = process.env.HOMEASSISTANT_URL || 'http://homeassistant:8123'
 const HA_TOKEN = process.env.HOMEASSISTANT_TOKEN || ''
@@ -42,7 +45,8 @@ export async function getLightEntities(): Promise<LightEntityInfo[]> {
             ? Math.round((e.attributes.brightness / 255) * 100)
             : undefined,
       }))
-  } catch {
+  } catch (err) {
+    logger.error({ err }, 'Failed to fetch light entities from Home Assistant')
     return []
   }
 }

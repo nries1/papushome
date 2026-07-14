@@ -408,7 +408,8 @@ async function getRecentSessionSummaryLines(limit: number): Promise<string[]> {
         const who = r.personName ? ` (with ${r.personName})` : ''
         return `[${date}${who}]: ${r.summary}`
       })
-  } catch {
+  } catch (err) {
+    logger.error({ err }, 'Failed to load recent session summaries')
     return []
   }
 }
@@ -493,7 +494,10 @@ function parseTextToolCall(content: string): OllamaToolCall | null {
       id: 'text-0',
       function: { name: match[1], arguments: JSON.parse(match[2]) },
     }
-  } catch {
+  } catch (err) {
+    // Expected sometimes: the model can emit a call-shaped string with
+    // malformed JSON args. Debug, not error — falls back to no tool call.
+    logger.debug({ err, content }, 'Malformed text-format tool call, ignoring')
     return null
   }
 }
