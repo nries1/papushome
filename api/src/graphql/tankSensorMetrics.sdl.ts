@@ -9,15 +9,15 @@ export const schema = gql`
     modeValue: Int!
   }
 
-  type DailyStdDev {
-    day: DateTime!
-    dailyStdDev: Float!
+  type ReadingStdDev {
+    timestamp: DateTime!
+    rollingStdDev: Float!
   }
 
   type Query {
     tankSensorHealthMetrics(deviceId: String, days: Int): SensorHealthMetrics
       @requireAuth
-    tankReadingDailyStdDev(deviceId: String, days: Int): [DailyStdDev!]!
+    tankReadingRollingStdDev(deviceId: String, days: Int): [ReadingStdDev!]!
       @requireAuth
   }
 `

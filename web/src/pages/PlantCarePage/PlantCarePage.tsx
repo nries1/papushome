@@ -2,8 +2,8 @@ import { useState } from 'react'
 
 import { Metadata } from '@redwoodjs/web'
 
-import Card from 'src/components/Card/Card'
 import CanWaterCell from 'src/components/CanWaterCell'
+import Card from 'src/components/Card/Card'
 import EnvironmentTempCell from 'src/components/EnvironmentTempCell'
 import RoomSelectCell from 'src/components/RoomSelectCell'
 import type { SelectedRoom } from 'src/components/RoomSelectCell'
@@ -17,12 +17,21 @@ const PlantCarePage = () => {
 
   return (
     <>
-      <Metadata title="Plant Care" description="Watering, moisture, and tank levels" />
+      <Metadata
+        title="Plant Care"
+        description="Watering, moisture, and tank levels"
+      />
 
-      <DashboardLayout title="Plant Care" actions={<RoomSelectCell onRoomSelected={setRoom} />}>
+      <DashboardLayout
+        title="Plant Care"
+        actions={<RoomSelectCell onRoomSelected={setRoom} />}
+      >
         {room && (
           <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-5">
-            <EnvironmentTempCell roomName={room.roomName} roomDisplayName={room.roomDisplayName} />
+            <EnvironmentTempCell
+              roomName={room.roomName}
+              roomDisplayName={room.roomDisplayName}
+            />
 
             {room.deviceId ? (
               <>
@@ -31,7 +40,9 @@ const PlantCarePage = () => {
               </>
             ) : (
               <Card title="Water Tank Status">
-                <p className="text-sm text-dash-text-dim">No pump device in this room.</p>
+                <p className="text-sm text-dash-text-dim">
+                  No pump device in this room.
+                </p>
               </Card>
             )}
 

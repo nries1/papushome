@@ -13,13 +13,21 @@ type SensorHealthMetricsRow = {
   mode_value: number
 }
 
-type DailyStdDevRow = {
-  day: Date
-  daily_stddev: Prisma.Decimal
+type ReadingStdDevRow = {
+  timestamp: Date
+  rolling_stddev: Prisma.Decimal
 }
 
 const deviceFilter = (deviceId?: string | null) =>
   deviceId ? Prisma.sql`AND device_id = ${deviceId}` : Prisma.empty
+
+// Readings are event-driven (firmware only publishes on a >=1.5% level
+// change), so grouping by calendar day often leaves whole days empty and
+// others with dozens of points from a single watering burst. A trailing
+// rolling window over the readings themselves — instead of day buckets —
+// gives a stable "jitter" signal regardless of how the readings are spaced
+// in time.
+const ROLLING_WINDOW_SIZE = 5
 
 export const tankSensorHealthMetrics: NonNullable<
   QueryResolvers['tankSensorHealthMetrics']
@@ -68,22 +76,24 @@ export const tankSensorHealthMetrics: NonNullable<
   }
 }
 
-export const tankReadingDailyStdDev: NonNullable<
-  QueryResolvers['tankReadingDailyStdDev']
+export const tankReadingRollingStdDev: NonNullable<
+  QueryResolvers['tankReadingRollingStdDev']
 > = async ({ deviceId, days }) => {
   const interval = `${days ?? 7} days`
-  const rows = await db.$queryRaw<DailyStdDevRow[]>(Prisma.sql`
+  const rows = await db.$queryRaw<ReadingStdDevRow[]>(Prisma.sql`
     SELECT
-        DATE_TRUNC('day', timestamp) AS day,
-        STDDEV_POP(raw_value) AS daily_stddev
+        timestamp,
+        STDDEV_POP(raw_value) OVER (
+          ORDER BY timestamp
+          ROWS BETWEEN ${ROLLING_WINDOW_SIZE - 1} PRECEDING AND CURRENT ROW
+        ) AS rolling_stddev
     FROM tank_readings
     WHERE timestamp >= NOW() - ${interval}::interval ${deviceFilter(deviceId)}
-    GROUP BY day
-    ORDER BY day ASC
+    ORDER BY timestamp ASC
   `)
 
   return rows.map((r) => ({
-    day: r.day,
-    dailyStdDev: r.daily_stddev.toNumber(),
+    timestamp: r.timestamp,
+    rollingStdDev: r.rolling_stddev.toNumber(),
   }))
 }
