@@ -1,0 +1,54 @@
+{
+  "title": "Logs Overview",
+  "uid": "logs-overview",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "timezone": "browser",
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "type": "query",
+        "datasource": { "type": "loki", "uid": "loki" },
+        "query": "label_values(service)",
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+"
+      },
+      {
+        "name": "module",
+        "label": "Module (redwood subsystem)",
+        "type": "query",
+        "datasource": { "type": "loki", "uid": "loki" },
+        "query": "label_values(module)",
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Logs",
+      "type": "logs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 20, "w": 24, "x": 0, "y": 0 },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      },
+      "targets": [
+        { "refId": "A", "expr": "{service=~\"$service\", module=~\"$module\"}", "queryType": "range" }
+      ]
+    }
+  ]
+}

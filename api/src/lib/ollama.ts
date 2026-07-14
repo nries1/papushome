@@ -1,6 +1,8 @@
 import axios from 'axios'
 
-import { logger } from 'src/lib/logger'
+import { moduleLogger } from 'src/lib/logger'
+
+const logger = moduleLogger('chat')
 
 type Message = {
   role: string
@@ -25,7 +27,12 @@ async function callOllama(
 ): Promise<OllamaMessage> {
   try {
     const body: Record<string, unknown> = {
-      model: process.env.OLLAMA_MODEL ?? 'qwen2.5:3b',
+      // qwen2.5:7b is the validated default — best balance of speed/accuracy
+      // for an 8GB-class GPU (reference hardware: RTX 2070). Llama 3.2
+      // didn't follow tool-calling/prompt instructions closely enough;
+      // Gemma and Qwen 3 don't fit in 8GB VRAM at a usable quantization.
+      // See SETUP.md's "Choosing an LLM" section before changing this.
+      model: process.env.OLLAMA_MODEL ?? 'qwen2.5:7b',
       messages,
       stream: false,
     }

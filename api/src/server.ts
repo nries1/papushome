@@ -4,8 +4,10 @@ import path from 'path'
 import fastifyStatic from '@fastify/static'
 import { createServer } from '@redwoodjs/api-server'
 
-import { logger } from 'src/lib/logger'
+import { moduleLogger } from 'src/lib/logger'
 import { visionListeners } from 'src/lib/mqtt'
+
+const logger = moduleLogger('graphql')
 
 // `yarn rw serve` (no side arg) runs web and api as two separate Fastify
 // processes on two ports (8910/8911) — self-hosting docs assume you put a

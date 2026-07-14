@@ -1,0 +1,71 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      # __meta_docker_container_name is "/papushome-redwood-1" etc — strip
+      # the leading slash Docker always prepends.
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      # Compose sets this label on every container it starts — auto-labels
+      # each container by its compose service name with zero per-service
+      # promtail config.
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: 'service'
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
+        target_label: 'compose_project'
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+
+    pipeline_stages:
+      # Unwraps Docker's json-file envelope ({"log":"...","stream":"stdout",
+      # "time":"..."}) into the raw line content — runs first regardless of
+      # what the container itself logs.
+      - docker: {}
+
+      # Best-effort JSON parse of the now-unwrapped line. Redwood's pino
+      # logger emits JSON; other services (e.g. mosquitto) emit plain text.
+      # A failed parse does not drop the line or abort the pipeline — it
+      # just produces no extracted fields, so non-JSON lines still reach
+      # Loki unlabeled.
+      - json:
+          expressions:
+            level: level
+            msg: msg
+            time: time
+            module: module
+
+      # Pino's default level format is numeric (10/20/30/40/50/60 for
+      # trace/debug/info/warn/error/fatal), not string labels. Promoted to
+      # an indexed label since it's low-cardinality; msg/time stay as
+      # per-line fields to avoid label-cardinality blowup.
+      #
+      # `module` distinguishes subsystems that share one container's `service`
+      # label (e.g. redwood bundles GraphQL, MQTT/hardware ingestion, and the
+      # LLM/chat pipeline in one process) — set via api/src/lib/logger.ts's
+      # moduleLogger() child loggers ('graphql'/'mqtt'/'chat'). Lines from
+      # code paths that don't use a tagged logger simply have no module
+      # value, same graceful-absence behavior as non-JSON lines.
+      - labels:
+          level:
+          module:
+
+      # Prefer the app's own timestamp over Docker's envelope timestamp for
+      # accurate ordering; falls back automatically for non-JSON lines.
+      - timestamp:
+          source: time
+          format: UnixMs
+          fallback_formats:
+            - RFC3339Nano

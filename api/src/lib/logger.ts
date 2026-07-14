@@ -15,3 +15,9 @@ import { createLogger } from '@redwoodjs/api/logger'
  * @param {boolean} showConfig - whether to display logger configuration on initialization
  */
 export const logger = createLogger({})
+
+// Tags every log line from a subsystem with a `module` field, so Loki can
+// label/filter on it (see observability/promtail-config.yml) independently
+// of the `service` label — which only identifies the container (`redwood`),
+// not which of GraphQL/MQTT/chat logic inside it produced a given line.
+export const moduleLogger = (module: string) => logger.child({ module })

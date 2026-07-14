@@ -12,7 +12,9 @@ import { getChatMessagesForSession } from 'src/services/chatMessages/get'
 import { appendChatMessage } from 'src/services/chatMessages/create'
 import { setChatSessionSummary } from 'src/services/chatSessions/update'
 import { db } from 'src/lib/db'
-import { logger } from 'src/lib/logger'
+import { moduleLogger } from 'src/lib/logger'
+
+const logger = moduleLogger('chat')
 
 // ---------------------------------------------------------------------------
 // Tool definitions

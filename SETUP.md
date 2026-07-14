@@ -23,7 +23,7 @@ cp .env.example .env
 cp hardware/lib/shared/config.h.example hardware/lib/shared/config.h
 ```
 
-Edit `.env` — at minimum set `POSTGRES_PASSWORD`, `REDWOOD_POSTGRES_USER`/`REDWOOD_POSTGRES_PASSWORD`/`REDWOOD_POSTGRES_DB` (these back the RedwoodJS app's database and are **not** pre-filled in `.env.example` — see the note below), `DISPLAY_TOKEN`, and `ZIP_CODE`.
+Edit `.env` — at minimum set `POSTGRES_PASSWORD`, `REDWOOD_POSTGRES_USER`/`REDWOOD_POSTGRES_PASSWORD`/`REDWOOD_POSTGRES_DB` (these back the RedwoodJS app's database and are **not** pre-filled in `.env.example` — see the note below), and `DISPLAY_TOKEN`. See `.env.example` for the full list of optional integrations (Google Calendar, Home Assistant, MindBody, weather location, etc.) and what each one gates.
 
 Edit `config.h` — set your WiFi credentials, server IP, and the same `DISPLAY_TOKEN` you put in `.env`.
 
@@ -48,6 +48,16 @@ docker compose --profile gpu up -d
 ```
 
 This additionally starts the Ollama LLM server, the kokoro TTS server, and the face recognition worker. Requires an NVIDIA GPU with the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html).
+
+### Choosing an LLM
+
+Default is `OLLAMA_MODEL=qwen2.5:7b` (see `.env.example`), validated against an 8GB-class GPU (reference hardware: RTX 2070). This came out of real head-to-head testing, not a guess:
+
+- **Llama 3.2** — didn't follow tool-calling/prompt instructions closely enough (the chat assistant relies on the model reliably calling `search_knowledge`/`control_light`/etc. rather than just describing what it would do).
+- **Gemma and Qwen 3** — too large to run well at a usable quantization in 8GB of VRAM.
+- **qwen2.5:7b** — best balance of speed and instruction-following that actually fit.
+
+If your GPU has more VRAM, a larger model in the same family (or a newer release) may follow instructions even better — this default is a starting point tuned for a modest GPU, not a hard recommendation. Pull whatever you choose with `docker compose exec ollama ollama pull <model>` and set `OLLAMA_MODEL` in `.env` to match.
 
 ## 3. Local development (optional)
 
@@ -138,6 +148,18 @@ Start publishing webcam frames to the vision pipeline:
 ```bash
 python robot-vision-publisher/publisher.py --broker <server-ip> --show-results
 ```
+
+## 7. Logs & metrics (Grafana, optional)
+
+```bash
+docker compose up -d loki promtail grafana
+```
+
+This starts Loki (log storage), Promtail (ships every container's stdout into Loki automatically — no per-service config needed), and Grafana (UI). Grafana is **Tailscale-only by design** — no Cloudflare Access app, no reverse proxy, no router port-forward. It publishes on host port 3030 (port 3000 was already taken by an unrelated service on this box), so it's reachable at `http://<tailscale-ip>:3030` (see `GRAFANA_URL` in `.env`) from any device on your tailnet, and nowhere else, as long as nothing else (e.g. an existing Cloudflare Tunnel) is separately configured to route a public hostname at that port — worth a quick check in the Cloudflare Zero Trust dashboard if you have a tunnel running.
+
+Set `GRAFANA_ADMIN_PASSWORD` in `.env` (generate with `openssl rand -hex 24`) before first boot — that's the login for the `admin` user. A Loki datasource and a read-only Postgres datasource (against `redwood-db`) are auto-provisioned, along with a starter "Logs Overview" dashboard.
+
+Note: RedwoodJS's default production log level is `warn` — `redwood`'s info/debug lines won't show up in Loki unless you set `LOG_LEVEL=info` (or `debug`) in `.env`.
 
 ## Troubleshooting
 

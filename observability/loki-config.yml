@@ -1,0 +1,59 @@
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+  log_level: info
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+query_range:
+  results_cache:
+    cache:
+      embedded_cache:
+        enabled: true
+        max_size_mb: 100
+
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: boltdb-shipper
+      object_store: filesystem
+      schema: v11
+      index:
+        prefix: index_
+        period: 24h
+
+ruler:
+  alertmanager_url: http://localhost:9093
+
+# Retention: 14 days, filesystem-backed (no S3/GCS) — everything lives under
+# the loki_data volume. The compactor is what actually deletes old
+# chunks/index; without retention_enabled the limit below is enforced only
+# at query time, not by deleting data from disk.
+compactor:
+  working_directory: /loki/compactor
+  shared_store: filesystem
+  compaction_interval: 10m
+  retention_enabled: true
+  retention_delete_delay: 2h
+  retention_delete_worker_count: 150
+
+limits_config:
+  # Promtail backfills each container's entire retained log history on
+  # first discovery (there's no "tail from now" option for docker_sd
+  # targets) — some containers on this host have run for weeks, so
+  # rejecting old samples here would just block that backfill with 400s.
+  reject_old_samples: false
+  retention_period: 336h # 14 days
+  max_cache_freshness_per_query: 10m

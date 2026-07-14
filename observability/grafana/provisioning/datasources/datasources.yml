@@ -1,0 +1,25 @@
+apiVersion: 1
+
+datasources:
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: true
+    jsonData:
+      maxLines: 5000
+
+  - name: Papushome Postgres
+    uid: redwood-postgres
+    type: postgres
+    access: proxy
+    url: redwood-db:5432
+    database: $REDWOOD_POSTGRES_DB
+    user: $REDWOOD_POSTGRES_USER
+    secureJsonData:
+      password: $REDWOOD_POSTGRES_PASSWORD
+    jsonData:
+      sslmode: disable
+      postgresVersion: 1500
+    isDefault: false

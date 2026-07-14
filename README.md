@@ -121,6 +121,14 @@ MacBook webcam
 
 ---
 
+## Security notes
+
+- **The MQTT broker has no authentication** (`allow_anonymous true`, no ACLs) and publishes ports 1883/9001. Anyone who can reach those ports has read/write access to every topic, including the pump/watering command topic. This is fine on a trusted home LAN, but **do not port-forward 1883/9001 to the internet** — if you need remote access to any service here, put it behind a VPN/Tailscale or Cloudflare Access (like the main dashboard) instead of exposing the broker directly.
+- `ADMIN_EMAILS` in `.env` controls who gets admin-role access via Cloudflare Access — set it to your own email(s), not example values.
+- `.env` (and everything derived from it — real API keys, tokens, passwords) is gitignored by design. Double-check `git status` before committing if you ever restructure config.
+
+---
+
 ## Stack
 
 - **Firmware:** C++ / Arduino (PlatformIO)

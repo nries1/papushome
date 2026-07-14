@@ -48,25 +48,33 @@ export const Success = ({
     <Card title="Sensor Health (7-Day Stability)" className="[grid-column:span_2]">
       <div className="flex gap-5">
         <div className="flex-1" style={{ height: 220 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="day" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-              <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} />
-              <Tooltip
-                contentStyle={{ background: '#1e293b', border: '1px solid #334155', fontSize: 12 }}
-                labelStyle={{ color: '#f8fafc' }}
-              />
-              <Line
-                type="monotone"
-                dataKey="jitter"
-                name="Standard Deviation (Jitter)"
-                stroke="#4a90e2"
-                fill="rgba(74, 144, 226, 0.1)"
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {chartData.length < 2 ? (
+            <div className="flex h-full items-center justify-center text-sm text-dash-text-dim">
+              {chartData.length === 0
+                ? 'No readings in the last 7 days.'
+                : 'Not enough readings yet to plot a trend (only 1 day with data).'}
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="day" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                <Tooltip
+                  contentStyle={{ background: '#1e293b', border: '1px solid #334155', fontSize: 12 }}
+                  labelStyle={{ color: '#f8fafc' }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="jitter"
+                  name="Standard Deviation (Jitter)"
+                  stroke="#4a90e2"
+                  fill="rgba(74, 144, 226, 0.1)"
+                  dot={{ r: 3, fill: '#4a90e2', strokeWidth: 0 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
         <div className="min-w-[150px] text-[0.85rem] leading-relaxed text-dash-text-dim">
           <strong className="text-dash-text-main">Distribution Stats:</strong>

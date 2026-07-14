@@ -43,6 +43,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.redwood
+      args:
+        GRAFANA_URL: ${GRAFANA_URL}
     depends_on:
       - redwood-db
     env_file:
@@ -70,12 +72,28 @@ services:
     profiles: ['tools'] # Only runs when explicitly called
 
   homeassistant:
-    image: ghcr.io/home-assistant/home-assistant:stable
+    # Pinned, not :stable — 2026.7.1 shipped a cffi/pycryptodome version
+    # mismatch (cffi 2.1.0 vs the compiled _cffi_backend 2.0.0) that crashed
+    # any custom_component importing pycryptodome (wyzeapi included) on
+    # import; fixed upstream in 2026.7.2, which pins cffi==2.0.0.
+    # https://github.com/home-assistant/core/issues/152143
+    image: ghcr.io/home-assistant/home-assistant:2026.7.2
     container_name: homeassistant
     environment:
       - TZ=America/New_York
+      # This image's Alpine ca-certificates bundle is missing the classic
+      # "DigiCert Global Root CA" (only newer G2/G3 variants are present),
+      # breaking TLS verification for any host whose chain terminates there
+      # — confirmed via api.wyzecam.com (wyzeapi integration). homeassistant/ca-bundle.pem
+      # is the system bundle + that one missing root, appended. Regenerate
+      # by downloading http://cacerts.digicert.com/DigiCertGlobalRootCA.crt
+      # inside the container and `cat`-ing it onto a fresh copy of
+      # /etc/ssl/certs/ca-certificates.crt if this image is ever updated.
+      - SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+      - REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
     volumes:
       - ./homeassistant/config:/config
+      - ./homeassistant/ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt:ro
       - /etc/localtime:/etc/localtime:ro
     ports:
       - '8123:8123'
@@ -159,10 +177,71 @@ services:
               count: 1
               capabilities: [gpu]
 
+  # --- Observability: Loki (storage) + Promtail (shipper) + Grafana (UI) ---
+  # Reachable only via Tailscale (see GRAFANA_URL in .env) + Grafana's own
+  # login — no Cloudflare Access app, no reverse proxy. Promtail
+  # auto-discovers every container's stdout via Docker service discovery,
+  # so no per-service config is needed as new services are added.
+  loki:
+    image: grafana/loki:2.9.6
+    container_name: loki
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./observability/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:2.9.6
+    container_name: promtail
+    # Must run as root: /var/lib/docker/containers is root-only on this host
+    # (not group-readable via the docker group) — the stock image's non-root
+    # default user can't read container log files or use docker.sock otherwise.
+    user: root
+    command: -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ./observability/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - promtail_positions:/tmp/positions
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      REDWOOD_POSTGRES_USER: ${REDWOOD_POSTGRES_USER}
+      REDWOOD_POSTGRES_PASSWORD: ${REDWOOD_POSTGRES_PASSWORD}
+      REDWOOD_POSTGRES_DB: ${REDWOOD_POSTGRES_DB}
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      # Host port 3000 is already taken by an unrelated service on this
+      # box (this server also runs Rocket.Chat/Wekan/etc, not just
+      # papushome) — 3030 chosen instead. GF_SERVER_HTTP_PORT stays 3000
+      # internally; only the host-side mapping changes.
+      - '3030:3000'
+    depends_on:
+      - loki
+      - redwood-db
+    restart: unless-stopped
+
 volumes:
   postgres_data:
     driver: local
   redwood_postgres_data:
     driver: local
   kokoro-voices:
+    driver: local
+  loki_data:
+    driver: local
+  promtail_positions:
+    driver: local
+  grafana_data:
     driver: local

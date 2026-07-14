@@ -80,21 +80,43 @@ export async function controlLight(command: LightCommand): Promise<ActionResult>
     if (command.kelvin) payload.color_temp_kelvin = command.kelvin
   }
 
+  let changed: Array<{ entity_id: string }>
   try {
-    await axios.post(`${HA_URL}/api/services/light/${command.action}`, payload, {
-      headers: {
-        Authorization: `Bearer ${HA_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      timeout: 8000,
-    })
+    // HA's /api/services/<domain>/<service> doesn't error on an unknown
+    // entity_id — it 200s with an empty array. A prior version of this
+    // function treated any 200 as success, so the chat assistant once
+    // confidently reported turning on a hallucinated entity_id
+    // ("light.couch_lights", which doesn't exist — the real ones are
+    // light.couch_1/light.couch_2) that HA silently did nothing with.
+    const res = await axios.post<Array<{ entity_id: string }>>(
+      `${HA_URL}/api/services/light/${command.action}`,
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${HA_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 8000,
+      }
+    )
+    changed = res.data
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     return { success: false, summary: `Light control failed: ${msg}` }
   }
 
-  const names = command.entity_ids
-    .map((id) => id.replace(/^light\./, '').replace(/_/g, ' '))
+  if (changed.length === 0) {
+    return {
+      success: false,
+      summary: `No lights matched entity_id(s): ${command.entity_ids.join(', ')}. Call list_lights to get real entity_ids.`,
+    }
+  }
+
+  // Report what HA actually confirms changed, not the requested entity_ids
+  // verbatim — if only some of a multi-entity request matched, the summary
+  // should reflect reality rather than the (possibly wrong) request.
+  const names = changed
+    .map((e) => e.entity_id.replace(/^light\./, '').replace(/_/g, ' '))
     .join(', ')
 
   let verb = command.action === 'turn_off' ? 'turned off' : 'turned on'

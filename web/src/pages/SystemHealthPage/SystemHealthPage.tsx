@@ -63,6 +63,23 @@ const SystemHealthPage = () => {
           <ServiceTile label="AI" status={aiStatus} detail={[workerAge, framesAge].filter(Boolean).join(' · ') || 'no activity'} />
         </div>
 
+        {process.env.GRAFANA_URL && (
+          <a
+            href={process.env.GRAFANA_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="mb-6 flex items-center justify-between rounded-2xl border border-slate-700 bg-slate-800/50 p-5 transition hover:border-blue-500"
+          >
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Logs &amp; Metrics</span>
+              <p className="mt-1 text-sm text-slate-300">Open Grafana (Tailscale network only)</p>
+            </div>
+            <span className="text-slate-500" aria-hidden>
+              ↗
+            </span>
+          </a>
+        )}
+
         <DeviceHealthStatsCell />
 
         <div className="mb-6 flex flex-col gap-6 rounded-2xl border border-slate-700 bg-slate-800/50 p-6">

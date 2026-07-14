@@ -6,7 +6,7 @@ import services from 'src/services/**/*.{js,ts}'
 
 import { cfAccessAuthPlugin } from 'src/lib/auth'
 import { db } from 'src/lib/db'
-import { logger } from 'src/lib/logger'
+import { moduleLogger } from 'src/lib/logger'
 // Side-effect imports: connect the MQTT client and kick off the hourly AI
 // summary job when the api process boots. This file is loaded in both
 // `yarn rw dev api` and `yarn rw serve api` (including via a custom
@@ -14,6 +14,8 @@ import { logger } from 'src/lib/logger'
 // this is the one place guaranteed to run in both.
 import 'src/lib/mqtt'
 import 'src/lib/aiSummaryService'
+
+const logger = moduleLogger('graphql')
 
 export const handler = createGraphQLHandler({
   loggerConfig: { logger, options: {} },

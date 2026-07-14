@@ -3,7 +3,7 @@ import type { ServerResponse } from 'http'
 import mqtt from 'mqtt'
 
 import { db } from 'src/lib/db'
-import { logger } from 'src/lib/logger'
+import { moduleLogger } from 'src/lib/logger'
 import { deviceConfig } from 'src/services/deviceConfig/get'
 import { upsertDevicePresence } from 'src/services/devicePresence/upsert'
 import { createEnvironmentReading } from 'src/services/environmentReadings/create'
@@ -11,6 +11,8 @@ import { createTankReading } from 'src/services/tankReadings/create'
 import { updateWateringEvent } from 'src/services/wateringEvents/update'
 
 import SHARED from '../../../shared/plant_config.json'
+
+const logger = moduleLogger('mqtt')
 
 interface WaterCommandPayload {
   device_id: string

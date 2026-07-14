@@ -11,7 +11,13 @@ import { AuthenticationError, ForbiddenError } from '@redwoodjs/graphql-server'
 // mutations on ADMIN_EMAILS.
 const CF_ACCESS_EMAIL_HEADER = 'cf-access-authenticated-user-email'
 
-export const ADMIN_EMAILS = ['nries1@gmail.com', 'avalongoebel@gmail.com']
+// Comma-separated list of admin emails, e.g. "you@gmail.com,partner@gmail.com".
+// Sourced from .env rather than hardcoded — this repo is public, and admin
+// email addresses are personal to whoever deploys it.
+export const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? '')
+  .split(',')
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean)
 
 export interface CurrentUser {
   email: string

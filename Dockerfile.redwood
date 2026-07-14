@@ -25,6 +25,14 @@ RUN yarn install --immutable
 
 COPY . .
 
+# GRAFANA_URL is baked into the web bundle at build time via redwood.toml's
+# includeEnvironmentVariables — .env is dockerignored (deliberately, to keep
+# secrets out of image layers), so runtime env_file alone never reaches the
+# web build step. Passed as a build arg instead since this value isn't a
+# secret (an internal Tailscale URL, not a credential).
+ARG GRAFANA_URL
+ENV GRAFANA_URL=$GRAFANA_URL
+
 RUN yarn rw build
 
 ENV NODE_ENV=production
