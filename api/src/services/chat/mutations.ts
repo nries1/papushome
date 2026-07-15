@@ -1,6 +1,7 @@
 import type { MutationResolvers } from 'types/graphql'
 
-import { runChatTurn, summarizeSessionAsync } from 'src/lib/chatContext'
+import { runChatTurn } from 'src/lib/chatContext'
+import { summarizeSessionAsync } from 'src/lib/chatSummarizer'
 import { ollamaChat } from 'src/lib/ollama'
 import { createChatEval } from 'src/services/chatEvals/create'
 import { createChatSession } from 'src/services/chatSessions/create'

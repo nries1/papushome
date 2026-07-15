@@ -27,7 +27,12 @@ export const photos: NonNullable<QueryResolvers['photos']> = async ({
     const limited = limit ? images.slice(0, limit) : images
     return limited.map(toPhoto)
   } catch (err) {
+    // Rethrow (after logging) rather than swallowing to `[]` — the web
+    // PhotosCell already has a dedicated Failure state distinct from its
+    // Empty ("No photos yet.") state, but returning `[]` here made a real
+    // failure (bad UPLOAD_PATH, permission/disk error) indistinguishable
+    // from a genuinely empty gallery, so Failure was unreachable dead code.
     logger.error({ err, UPLOAD_PATH }, 'Failed to read photos directory')
-    return []
+    throw err
   }
 }

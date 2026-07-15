@@ -66,17 +66,16 @@ async function appendDeviceLog({
   }
 }
 
+// Throws on a real DB failure rather than returning null — null is reserved
+// for "this device genuinely has no room assigned" (the environment-reading
+// handler below persists it as-is), so a transient lookup failure must not
+// be allowed to silently masquerade as that legitimate case.
 async function getRoomIdForDevice(deviceId: string): Promise<number | null> {
-  try {
-    const device = await db.device.findUnique({
-      where: { deviceId },
-      select: { roomId: true },
-    })
-    return device?.roomId ?? null
-  } catch (err) {
-    hwLogger.error({ err, deviceId }, 'Failed to look up room for device')
-    return null
-  }
+  const device = await db.device.findUnique({
+    where: { deviceId },
+    select: { roomId: true },
+  })
+  return device?.roomId ?? null
 }
 
 // SSE clients (/vision/stream) need to tell the two vision topics apart —
@@ -250,7 +249,13 @@ client.on('message', async (topic: string, message: Buffer) => {
     const deviceId = (data['device_id'] ??
       data['device_name'] ??
       'env-unknown') as string
-    const roomId = await getRoomIdForDevice(deviceId)
+
+    let roomId: number | null = null
+    try {
+      roomId = await getRoomIdForDevice(deviceId)
+    } catch (err) {
+      hwLogger.error({ err, deviceId }, 'Failed to look up room for device')
+    }
 
     try {
       await createEnvironmentReading({

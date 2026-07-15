@@ -49,9 +49,9 @@ async function callOllama(
     logger.error(
       {
         err,
-        code: (err as any).code,
-        status: (err as any).response?.status,
-        ollamaError: (err as any).response?.data,
+        code: axios.isAxiosError(err) ? err.code : undefined,
+        status: axios.isAxiosError(err) ? err.response?.status : undefined,
+        ollamaError: axios.isAxiosError(err) ? err.response?.data : undefined,
       },
       'Ollama request failed'
     )
@@ -60,10 +60,9 @@ async function callOllama(
 }
 
 export async function getEmbedding(text: string): Promise<number[]> {
-  const base = (process.env.OLLAMA_URL ?? 'http://ollama:11434/api/chat').replace(
-    '/api/chat',
-    ''
-  )
+  const base = (
+    process.env.OLLAMA_URL ?? 'http://ollama:11434/api/chat'
+  ).replace('/api/chat', '')
   const response = await axios.post<{ embeddings: number[][] }>(
     `${base}/api/embed`,
     { model: 'nomic-embed-text', input: text }

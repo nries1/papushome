@@ -1,9 +1,9 @@
 import type { QueryResolvers } from 'types/graphql'
 
-import { buildSystemPrompt } from 'src/lib/chatContext'
+import { buildSystemPrompt } from 'src/lib/chatSystemPrompt'
 
-export const chatSystemPrompt: NonNullable<QueryResolvers['chatSystemPrompt']> = ({
-  person,
-}) => {
+export const chatSystemPrompt: NonNullable<
+  QueryResolvers['chatSystemPrompt']
+> = ({ person }) => {
   return buildSystemPrompt(person ?? null)
 }
