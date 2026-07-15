@@ -255,6 +255,24 @@ function buildTools(hasPreSearchHits: boolean): object[] {
 // ---------------------------------------------------------------------------
 
 async function executeTool(name: string, args: Record<string, unknown>): Promise<string> {
+  try {
+    return await executeToolInner(name, args)
+  } catch (err) {
+    // Without this, an unhandled throw here (e.g. the DB or Ollama's embedding
+    // endpoint being down) propagates out of runChatTurn entirely — the
+    // mutation 500s with no relayable text, and the user's turn is silently
+    // dropped (no assistant reply ever gets appended to history). Several
+    // tools below already caught their own known failure modes (booking, HA
+    // light control, calendar) per Issue #8; this catches the rest
+    // (search_knowledge, water_plants, update_knowledge) uniformly so no tool
+    // can take down the whole turn.
+    const message = err instanceof Error ? err.message : String(err)
+    logger.error({ err, tool: name, args }, `Tool "${name}" threw`)
+    return `Tool "${name}" failed: ${message}`
+  }
+}
+
+async function executeToolInner(name: string, args: Record<string, unknown>): Promise<string> {
   switch (name) {
     case 'search_knowledge': {
       const embedding = await getEmbedding(args.query as string)

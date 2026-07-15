@@ -4,7 +4,7 @@ const path = require('path');
 const configPath = path.join(__dirname, '../shared/plant_config.json');
 const headerPath = path.join(
   __dirname,
-  '../hardware/shared/shared_constants.h'
+  '../hardware/lib/shared/shared_constants.h'
 );
 
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -22,6 +22,7 @@ static const char* SHARED_TOPIC_HUMIDITY_1F = "${config.environment_humidity_1f_
 static const char* SHARED_TOPIC_PRESSURE_1F = "${config.environment_pressure_1f_topic}";
 static const char* SHARED_TOPIC_GAS_1F = "${config.environment_gas_1f_topic}";
 static const char* SHARED_TOPIC_DEVICE_LOGS = "${config.device_logs_topic}";
+static const char* SHARED_TOPIC_DEVICE_BOOT = "${config.device_boot_topic}";
 
 #endif
 `;
