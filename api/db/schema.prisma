@@ -201,3 +201,17 @@ model WateringEvent {
 
   @@map("watering_events")
 }
+
+// Not read by the Redwood API itself — web-agents (a separate Node service,
+// see web-agents/src/mindbody/sessionStore.ts) reads/writes this table
+// directly via `pg` to reuse a logged-in Playwright browser profile
+// (cookies + localStorage) across booking runs instead of starting from a
+// fresh, historyless session every time, which is itself a signal MindBody's
+// reCAPTCHA Enterprise risk scoring weighs against automation.
+model WebAgentSession {
+  profile      String   @id
+  storageState Json     @map("storage_state")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("web_agent_sessions")
+}

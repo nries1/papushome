@@ -12,7 +12,13 @@ import { updateWateringEvent } from 'src/services/wateringEvents/update'
 
 import SHARED from '../../../shared/plant_config.json'
 
+// Two module tags on one file: 'mqtt' for the broker transport itself
+// (connect/reconnect/offline/error/subscribe), 'hardware' for the actual
+// device data this transport carries (tank/environment readings, watering
+// commands, device presence/logs) — distinguishes "the broker connection is
+// flaky" from "a specific sensor/device is misbehaving" in Grafana.
 const logger = moduleLogger('mqtt')
+const hwLogger = moduleLogger('hardware')
 
 interface WaterCommandPayload {
   device_id: string
@@ -56,7 +62,7 @@ async function appendDeviceLog({
   try {
     await db.deviceLog.create({ data: { deviceId, logLevel, message } })
   } catch (err) {
-    logger.error({ err, deviceId }, 'Failed to write device log')
+    hwLogger.error({ err, deviceId }, 'Failed to write device log')
   }
 }
 
@@ -68,7 +74,7 @@ async function getRoomIdForDevice(deviceId: string): Promise<number | null> {
     })
     return device?.roomId ?? null
   } catch (err) {
-    logger.error({ err, deviceId }, 'Failed to look up room for device')
+    hwLogger.error({ err, deviceId }, 'Failed to look up room for device')
     return null
   }
 }
@@ -148,9 +154,9 @@ client.on('message', async (topic: string, message: Buffer) => {
         id: eventId,
         input: { durationMs: data['duration'] as number, status },
       })
-      logger.info({ eventId, status }, 'Pump cycle complete')
+      hwLogger.info({ eventId, status }, 'Pump cycle complete')
     } catch (err) {
-      logger.error({ err, eventId, status }, 'Failed to update water event')
+      hwLogger.error({ err, eventId, status }, 'Failed to update water event')
     }
   }
 
@@ -191,7 +197,7 @@ client.on('message', async (topic: string, message: Buffer) => {
         },
       })
     } catch (err) {
-      logger.error({ err, deviceId }, 'Failed to persist tank reading')
+      hwLogger.error({ err, deviceId }, 'Failed to persist tank reading')
     }
   }
 
@@ -251,7 +257,7 @@ client.on('message', async (topic: string, message: Buffer) => {
         input: { deviceId, roomId, readings: { metric, value } },
       })
     } catch (err) {
-      logger.error(
+      hwLogger.error(
         { err, topic, deviceId, metric, value },
         'Failed to persist environment reading'
       )
@@ -290,7 +296,7 @@ async function canWaterPlants(deviceId: string): Promise<boolean> {
     })
     return (latest?.pctFull ?? 0) > 4 // percentage-based; tank-size-agnostic
   } catch (err) {
-    logger.error({ err, deviceId }, 'Failed to fetch water level data')
+    hwLogger.error({ err, deviceId }, 'Failed to fetch water level data')
     return false
   }
 }
@@ -314,14 +320,14 @@ export async function publishWaterCommand(
 
   const safe = await canWaterPlants(deviceId)
   if (!safe) {
-    logger.warn({ eventId, deviceId }, 'Safety Block: Tank level too low')
+    hwLogger.warn({ eventId, deviceId }, 'Safety Block: Tank level too low')
     try {
       await updateWateringEvent({
         id: eventId,
         input: { durationMs: 0, status: 'BLOCKED_LOW_WATER' },
       })
     } catch (err) {
-      logger.error({ err, eventId }, 'Failed to record blocked water event')
+      hwLogger.error({ err, eventId }, 'Failed to record blocked water event')
     }
     return false
   }
@@ -335,7 +341,7 @@ export async function publishWaterCommand(
         qos: 1,
       }
     )
-    logger.info(
+    hwLogger.info(
       { eventId, action, durationMs },
       `Command Published: ${topicName}`
     )

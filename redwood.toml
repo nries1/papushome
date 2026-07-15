@@ -6,7 +6,7 @@
 # https://redwoodjs.com/docs/app-configuration-redwood-toml
 
 [web]
-  title = "Redwood App"
+  title = "Papu's Home"
   port = 8910
   # Default "/.redwood/functions" assumes a reverse proxy (or Netlify-style
   # rewrite) maps that prefix to the api process. This app instead runs one

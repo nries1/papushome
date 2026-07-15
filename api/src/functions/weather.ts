@@ -2,7 +2,9 @@ import type { APIGatewayEvent, Context } from 'aws-lambda'
 
 import { getCurrentUserFromEvent } from 'src/lib/auth'
 import { getCurrentWeather, weatherCodeToText } from 'src/lib/weather'
-import { logger } from 'src/lib/logger'
+import { moduleLogger } from 'src/lib/logger'
+
+const logger = moduleLogger('api')
 
 // Replaces the old GET /api/weather Express route (Open-Meteo proxy). This
 // is a plain Function rather than a GraphQL query only because it's a thin

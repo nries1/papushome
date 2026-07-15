@@ -32,7 +32,13 @@ class SensorNode {
   unsigned long lastReadTime = 0;
   const int numberOfReadings = 51;
   const unsigned long readInterval = 2 * 60 * 1000;  // 2 minutes
+  // Force a publish at least this often even when the 1.5% change threshold
+  // isn't crossed, so a healthy-but-idle tank (sensor/WiFi/MQTT all fine,
+  // level just isn't moving) stays distinguishable from an actually-offline
+  // one on the dashboard's Sensor Health chart.
+  const unsigned long heartbeatEveryNReads = 180;  // ~6 hours at one read per readInterval
   float lastReportedPercentage = -1.0;
+  unsigned long readCount = 0;
   TaskHandle_t TankTask;
 
  public:
@@ -75,16 +81,20 @@ class SensorNode {
 
       log.info("raw=%d pct=%.2f gal=%.2f\n", current.rawValue, current.percent, current.gallons);
 
-      // 2. Check for a significant change (1.5% threshold)
-      // This ensures we only notify subscribers if something meaningful happened
+      // 2. Check for a significant change (1.5% threshold), or a heartbeat
+      // that's due regardless of change — see heartbeatEveryNReads above.
+      readCount++;
+      bool changed = abs(current.percent - lastReportedPercentage) >= 1.5;
+      bool heartbeatDue = (readCount % heartbeatEveryNReads == 0);
+
       log.info("Prev reported pct=%.2f, current pct=%.2f\n", lastReportedPercentage,
                current.percent);
       log.info("Difference from last reported percentage: %f",
                abs(current.percent - lastReportedPercentage));
-      if (abs(current.percent - lastReportedPercentage) >= 1.5) {
-        log.info("Notifying %d subscribers\n", listeners.size());
+      if (changed || heartbeatDue) {
+        log.info("Notifying %d subscribers (%s)\n", listeners.size(),
+                 changed ? "change detected" : "heartbeat");
         lastReportedPercentage = current.percent;
-        log.info("Tank Task: Change detected. Notifying subscribers.");
         for (int i = 0; i < listeners.size(); i++) {
           log.info("  Calling listener %d\n", i);
           if (listeners[i]) {

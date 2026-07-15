@@ -53,11 +53,12 @@ scrape_configs:
       # per-line fields to avoid label-cardinality blowup.
       #
       # `module` distinguishes subsystems that share one container's `service`
-      # label (e.g. redwood bundles GraphQL, MQTT/hardware ingestion, and the
-      # LLM/chat pipeline in one process) — set via api/src/lib/logger.ts's
-      # moduleLogger() child loggers ('graphql'/'mqtt'/'chat'). Lines from
-      # code paths that don't use a tagged logger simply have no module
-      # value, same graceful-absence behavior as non-JSON lines.
+      # label (e.g. redwood bundles GraphQL, MQTT transport, device/hardware
+      # data ingestion, DB logging, and the LLM/chat pipeline in one process)
+      # — set via api/src/lib/logger.ts's moduleLogger() child loggers
+      # ('graphql'/'mqtt'/'hardware'/'db'/'chat'/'api'). Lines from code paths
+      # that don't use a tagged logger simply have no module value, same
+      # graceful-absence behavior as non-JSON lines.
       - labels:
           level:
           module:

@@ -1,10 +1,12 @@
 import axios from 'axios'
 
 import { db } from 'src/lib/db'
-import { logger } from 'src/lib/logger'
+import { moduleLogger } from 'src/lib/logger'
 import { latestEnvironmentReading } from 'src/services/environmentReadings/get'
 import { tankSensorHealthMetrics } from 'src/services/tankSensorMetrics/get'
 import { createAiSummary } from 'src/services/aiSummaries/create'
+
+const logger = moduleLogger('chat')
 
 async function buildPrompt(): Promise<string> {
   const [temp, humidity, pressure, gas, waterLevels, waterEvents, sensorMetrics] =

@@ -5,9 +5,11 @@ import { context } from '@redwoodjs/context'
 import type { CurrentUser } from 'src/lib/auth'
 import { ADMIN_EMAILS } from 'src/lib/auth'
 import { db } from 'src/lib/db'
-import { logger } from 'src/lib/logger'
+import { moduleLogger } from 'src/lib/logger'
 
 import SHARED from '../../../../shared/plant_config.json'
+
+const logger = moduleLogger('hardware')
 
 // Replaces the old GET /api/can-water route — computes whether the UI's
 // water button should be enabled, and why not if it's disabled. This is

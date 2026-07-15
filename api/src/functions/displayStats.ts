@@ -1,9 +1,11 @@
 import type { APIGatewayEvent, Context } from 'aws-lambda'
 
 import { db } from 'src/lib/db'
-import { logger } from 'src/lib/logger'
+import { moduleLogger } from 'src/lib/logger'
 import { latestEnvironmentReading } from 'src/services/environmentReadings/get'
 import { getCurrentWeather, weatherCodeToText } from 'src/lib/weather'
+
+const logger = moduleLogger('hardware')
 
 // Replaces the old GET /api/display-stats Express route. Feeds the
 // physical e-ink display board, which authenticates with a static

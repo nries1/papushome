@@ -2,10 +2,18 @@ services:
   web-agents:
     build:
       context: ./web-agents
+    depends_on:
+      - redwood-db
     env_file:
       - .env
     environment:
       - WEB_AGENT_PORT=3001
+    ports:
+      # noVNC — watch the (non-headless) booking browser session live in a
+      # browser tab. Same Tailscale-only-in-practice convention as Grafana's
+      # 3030: published on the host, but relies on there being no separate
+      # public port-forward/tunnel routing it externally.
+      - '6080:6080'
     restart: unless-stopped
 
   # The old pre-redwood database. No service in this compose file reads from

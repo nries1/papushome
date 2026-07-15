@@ -2,7 +2,9 @@ import type { APIGatewayEvent, Context } from 'aws-lambda'
 import si from 'systeminformation'
 
 import { getCurrentUserFromEvent } from 'src/lib/auth'
-import { logger } from 'src/lib/logger'
+import { moduleLogger } from 'src/lib/logger'
+
+const logger = moduleLogger('api')
 
 // Replaces the old GET /api/stats Express route (host CPU/mem/temp via
 // systeminformation). Requires CF auth (any authenticated user), matching
