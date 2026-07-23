@@ -57,8 +57,9 @@ cp hardware/lib/shared/config.h.example hardware/lib/shared/config.h
 corepack enable
 yarn install
 
-# Start the server stack (RedwoodJS app, Postgres, MQTT, Home Assistant, web-agents)
-docker compose up -d
+# Start the server stack: the RedwoodJS app (GraphQL API + web, one process),
+# Postgres, MQTT, Home Assistant, and web-agents
+npm run docker:up
 ```
 
 Database migrations run automatically on container start (`yarn rw prisma migrate deploy`, baked into the `redwood` service's entrypoint) — no separate migrate step needed for Docker.
@@ -68,10 +69,25 @@ The dashboard is now at `http://YOUR_SERVER_IP`.
 **With a GPU** (face recognition, LLM, and TTS):
 
 ```bash
-docker compose --profile gpu up -d
+npm run docker:up:gpu
 ```
 
-This additionally starts `ollama` (LLM), `kokoro` (TTS), and `robot-vision-worker` (face recognition).
+This additionally starts `ollama` (LLM), `kokoro` (TTS), and `robot-vision-worker` (face recognition). Other useful shortcuts: `npm run docker:logs` (tails the `redwood` service), `npm run docker:ps`, `npm run docker:down`.
+
+**Developing the RedwoodJS app directly** (hot reload, instead of the Docker build):
+
+```bash
+yarn rw dev
+```
+
+This runs the web side (port 8910) and API side (port 8911) on the host, watching for changes. See [SETUP.md](SETUP.md#3-local-development-optional) for pointing it at the right database.
+
+**Flash firmware to an ESP32 node** (e.g. after editing `hardware/plant-node/`):
+
+```bash
+npm run hw:flash:plant-node          # also: hw:flash:environment-sensor, hw:flash:rgb-display
+npm run hw:monitor:plant-node        # tail serial output instead of flashing
+```
 
 **Enroll a face** (from the machine with the webcam or a directory of photos):
 

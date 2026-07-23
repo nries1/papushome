@@ -34,7 +34,7 @@ Edit `config.h` — set your WiFi credentials, server IP, and the same `DISPLAY_
 ## 2. Start the server stack
 
 ```bash
-docker compose up -d
+npm run docker:up   # docker compose up -d
 ```
 
 This starts: the RedwoodJS app (`redwood`, port 80 — API + web in one process), `redwood-db` (Postgres 15 + pgvector), `mqtt-broker`, `homeassistant`, and `web-agents`. Database migrations apply automatically on container start.
@@ -44,10 +44,12 @@ The dashboard will be available at `http://YOUR_SERVER_IP`.
 **With a GPU (for robot vision, LLM, and TTS):**
 
 ```bash
-docker compose --profile gpu up -d
+npm run docker:up:gpu   # docker compose --profile gpu up -d
 ```
 
 This additionally starts the Ollama LLM server, the kokoro TTS server, and the face recognition worker. Requires an NVIDIA GPU with the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html).
+
+Other shortcuts: `npm run docker:logs` (tails the `redwood` service), `npm run docker:ps`, `npm run docker:down`.
 
 ### Choosing an LLM
 
@@ -86,35 +88,36 @@ npm run deploy:remote  # from your laptop: ssh to $SSH_IP in .env, then run the 
 
 ## 5. Flash the hardware
 
-Connect an ESP32 board via USB, then invoke the flashing scripts directly (there are no `npm run hw:*` shortcuts wired up in this repo yet — the scripts themselves live in `scripts/`):
+Connect an ESP32 board via USB, then flash via the `npm run hw:flash:*` shortcuts (thin wrappers around `scripts/device_flash.js`):
 
 ```bash
-# Plant node (Adafruit Metro ESP32-S3)
+npm run hw:flash:plant-node          # Adafruit Metro ESP32-S3
+npm run hw:flash:environment-sensor  # Nologo ESP32-C3 Super Mini
+npm run hw:flash:rgb-display         # ESP32-S3
+```
+
+Equivalent direct invocation (useful for extra flags not exposed by the npm scripts, e.g. `--port`):
+
+```bash
 node scripts/device_flash.js --project plant-node --fqbn esp32:esp32:adafruit_metro_esp32s3 --model "Adafruit Metro ESP32-S3"
-
-# Environment sensor (ESP32-C3 Super Mini)
-node scripts/device_flash.js --project environment-sensor --fqbn esp32:esp32:nologo_esp32c3_super_mini --model "Nologo ESP32-C3 Super Mini"
-
-# RGB display (ESP32-S3)
-node scripts/device_flash.js --project rgb-display --fqbn esp32:esp32:esp32s3 --model "RGB Display ESP32-S3"
 ```
 
 To see what boards are connected:
 
 ```bash
-arduino-cli board list
+npm run hw:boards   # arduino-cli board list
 ```
 
 To monitor serial output instead of flashing:
 
 ```bash
-node scripts/flash.js --project plant-node --fqbn esp32:esp32:adafruit_metro_esp32s3 --target monitor
+npm run hw:monitor:plant-node
 ```
 
-Or monitor over OTA/mDNS instead of a USB serial connection:
+Or monitor over OTA/mDNS instead of a USB serial connection (pass extra flags after `--`):
 
 ```bash
-node scripts/flash.js --project plant-node --fqbn esp32:esp32:adafruit_metro_esp32s3 --target monitor --transport ota --name <device>
+npm run hw:monitor:plant-node -- --transport ota --name <device>
 ```
 
 (OTA requires `avahi-daemon` on Linux to resolve `<device>.local` — see the main project docs.)
