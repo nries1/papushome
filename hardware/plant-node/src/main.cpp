@@ -89,7 +89,7 @@ void setup() {
 
 void loop() {
   OTAService::handle();
-  plantComms.maintainConnection(Device::getDeviceID().c_str(), SHARED_TOPIC_PUMP);
+  plantComms.maintainConnection(Device::getDeviceID().c_str(), SHARED_PUMP_TOPIC);
   plantComms.flushPendingEvents();
   plantPump.update();
 }

@@ -27,10 +27,10 @@
 #define ROOM_NAME unknown
 #endif
 
-const char* topicTemp = SHARED_TOPIC_TEMP_1F;
-const char* topicHumidity = SHARED_TOPIC_HUMIDITY_1F;
-const char* topicPressure = SHARED_TOPIC_PRESSURE_1F;
-const char* topicGas = SHARED_TOPIC_GAS_1F;
+const char* topicTemp = SHARED_ENVIRONMENT_TEMP_1F_TOPIC;
+const char* topicHumidity = SHARED_ENVIRONMENT_HUMIDITY_1F_TOPIC;
+const char* topicPressure = SHARED_ENVIRONMENT_PRESSURE_1F_TOPIC;
+const char* topicGas = SHARED_ENVIRONMENT_GAS_1F_TOPIC;
 
 #define I2C_SDA 8
 #define I2C_SCL 9
@@ -75,7 +75,7 @@ void publishLog(const char* level, const char* message) {
   doc["log_level"] = level;
   doc["message"] = message;
   serializeJson(doc, out);
-  mqttClient.publish(SHARED_TOPIC_DEVICE_LOGS, out);
+  mqttClient.publish(SHARED_DEVICE_LOGS_TOPIC, out);
 }
 
 void setupWiFi() {
@@ -161,7 +161,7 @@ void setup() {
     bootDoc["device_name"] = Device::getDeviceName();
     bootDoc["ip"] = WiFi.localIP().toString();
     serializeJson(bootDoc, bootMsg);
-    mqttClient.publish(SHARED_TOPIC_DEVICE_BOOT, bootMsg);
+    mqttClient.publish(SHARED_DEVICE_BOOT_TOPIC, bootMsg);
   }
 }
 

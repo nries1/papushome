@@ -112,9 +112,11 @@ async function executeToolInner(
           }),
         })
         const json = (await res.json()) as { success: boolean; message: string }
-        return json.message ?? (json.success ? 'Booked.' : 'Booking failed.')
+        if (json.success) return json.message ?? 'Booked.'
+        const failMessage = json.message ?? 'Booking failed.'
+        return failMessage.startsWith('ERROR') ? failMessage : `ERROR: ${failMessage}`
       } catch (err) {
-        return `Booking service error: ${err instanceof Error ? err.message : String(err)}`
+        return `ERROR: Booking service error: ${err instanceof Error ? err.message : String(err)}`
       }
     }
 
@@ -133,9 +135,11 @@ async function executeToolInner(
           }),
         })
         const json = (await res.json()) as { success: boolean; message: string }
-        return json.message ?? (json.success ? 'Booked.' : 'Booking failed.')
+        if (json.success) return json.message ?? 'Booked.'
+        const failMessage = json.message ?? 'Booking failed.'
+        return failMessage.startsWith('ERROR') ? failMessage : `ERROR: ${failMessage}`
       } catch (err) {
-        return `Booking service error: ${err instanceof Error ? err.message : String(err)}`
+        return `ERROR: Booking service error: ${err instanceof Error ? err.message : String(err)}`
       }
     }
 

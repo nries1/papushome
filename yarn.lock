@@ -15407,6 +15407,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"pio-flash-cli@npm:^0.1.0":
+  version: 0.1.0
+  resolution: "pio-flash-cli@npm:0.1.0"
+  bin:
+    pio-flash: bin/pio-flash.js
+    pio-flash-device: bin/pio-flash-device.js
+  checksum: 10c0/d12d016a8015694fc5c0785828313871cc23bd876c86ad79ccc78364909ccce7477aec8a15c95d26882a668a772fc22a0be615517063a4a4d8134d35ac904ea6
+  languageName: node
+  linkType: hard
+
 "pirates@npm:^4.0.4, pirates@npm:^4.0.6":
   version: 4.0.7
   resolution: "pirates@npm:4.0.7"
@@ -16612,6 +16622,7 @@ __metadata:
     "@redwoodjs/core": "npm:8.9.0"
     "@redwoodjs/project-config": "npm:8.9.0"
     env-cmd: "npm:^11.0.0"
+    pio-flash-cli: "npm:^0.1.0"
   languageName: unknown
   linkType: soft
 

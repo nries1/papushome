@@ -79,6 +79,16 @@ export async function runChatTurn(
 
   const tools = buildTools(personalHits.length > 0)
 
+  // qwen2.5:7b has claimed a booking succeeded in the same breath as
+  // acknowledging a tool error (confirmed live: "there was an issue... has
+  // been successfully added... and marked as confirmed" after a real
+  // book_tabata_class ERROR). Prompting alone didn't stop it, so track real
+  // booking failures this turn and override the final reply deterministically
+  // if it still claims success despite one.
+  const BOOKING_TOOLS = new Set(['book_tabata_class', 'book_yoga_class'])
+  const CLAIMS_SUCCESS = /\b(successfully|is booked|has been booked|you'?re (all set|booked)|added to your calendar|booking (was |is )?complete)\b/i
+  let bookingFailedThisTurn = false
+
   for (let round = 0; round < 5; round++) {
     const response = await ollamaChatWithTools(messages, tools)
 
@@ -89,12 +99,16 @@ export async function runChatTurn(
     }
 
     if (!response.tool_calls?.length) {
+      const finalContent =
+        bookingFailedThisTurn && CLAIMS_SUCCESS.test(response.content)
+          ? "That booking didn't actually go through — want me to try again?"
+          : response.content
       await appendChatMessage({
         sessionKey,
         role: 'assistant',
-        content: response.content,
+        content: finalContent,
       })
-      return response.content
+      return finalContent
     }
 
     logger.info(
@@ -119,11 +133,18 @@ export async function runChatTurn(
         { args: tc.function.arguments, result },
         `tool:${tc.function.name}`
       )
+      if (BOOKING_TOOLS.has(tc.function.name) && result.startsWith('ERROR')) {
+        bookingFailedThisTurn = true
+      }
       messages.push({ role: 'tool', content: result, tool_call_id: tc.id })
     }
   }
 
-  const fallback = await ollamaChat(messages)
+  const rawFallback = await ollamaChat(messages)
+  const fallback =
+    bookingFailedThisTurn && CLAIMS_SUCCESS.test(rawFallback)
+      ? "That booking didn't actually go through — want me to try again?"
+      : rawFallback
   await appendChatMessage({ sessionKey, role: 'assistant', content: fallback })
   return fallback
 }

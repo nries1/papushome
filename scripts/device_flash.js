@@ -1,41 +1,43 @@
 #!/usr/bin/env node
-// Full flash flow: upload → log release → monitor.
-// Fixed args (--project, --fqbn, --model) are set in package.json scripts.
-// Pass-through args (--port, --name, --room, --transport, etc.) are appended
-// by npm when the user runs: npm run hw:flash -- --port /dev/ttyACM0 --name foo
+// Usage: node scripts/device_flash.js --project <name> --fqbn <fqbn> --model <name> [...]
+//
+// Thin repo-specific wrapper around the pio-flash-cli package's pio-flash-device
+// bin (upload -> log release -> monitor): resolves --project <name> to
+// --dir hardware/<name> (same convention as scripts/flash.js) and points
+// release logging at this repo's Postgres adapter instead of the package's
+// zero-infra default (a local hardware_releases.jsonl file).
 
-const { spawnSync } = require('child_process');
 const path = require('path');
-
-const node    = process.execPath;
-const scripts = __dirname;
+const { spawnSync } = require('child_process');
 
 function arg(name) {
   const i = process.argv.indexOf(name);
   return i !== -1 ? process.argv[i + 1] : null;
 }
 
-const model = arg('--model');
-if (!model) {
-  console.error('device_flash.js: --model is required');
+const project = arg('--project');
+if (!project) {
+  console.error('Usage: device_flash.js --project <name> --fqbn <fqbn> --model <name> ...');
   process.exit(1);
 }
 
-// All args are forwarded to flash.js. It ignores unknown ones (e.g. --model),
-// and --name/--room are safely ignored on the monitor step (target !== upload).
-const passthrough = process.argv.slice(2);
+const projectDir = path.resolve(__dirname, '..', 'hardware', project);
+const adapterPath = path.join(__dirname, 'postgres_release_adapter.js');
 
-function run(script, extraArgs) {
-  const result = spawnSync(node, [path.join(scripts, script), ...extraArgs], { stdio: 'inherit' });
-  if (result.status !== 0) process.exit(result.status ?? 1);
+const passthrough = [];
+const argv = process.argv.slice(2);
+for (let i = 0; i < argv.length; i++) {
+  if (argv[i] === '--project') {
+    i++; // drop the pair, replaced below by --dir
+    continue;
+  }
+  passthrough.push(argv[i]);
 }
 
-run('flash.js',       ['--target', 'upload',  ...passthrough]);
-run('log_release.js', ['--model', model]);
-
-// Give the device time to reboot and re-enumerate its USB CDC port before
-// the monitor tries to connect. Native USB boards disconnect briefly on reset.
-console.log('Waiting for device to reboot...');
-Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000);
-
-run('flash.js',       ['--target', 'monitor', ...passthrough]);
+const cli = require.resolve('pio-flash-cli/bin/pio-flash-device.js');
+const result = spawnSync(
+  process.execPath,
+  [cli, '--dir', projectDir, '--log-adapter', adapterPath, ...passthrough],
+  { stdio: 'inherit' }
+);
+process.exit(result.status ?? 0);

@@ -63,7 +63,7 @@ class Networking {
     doc["device_name"] = Device::getDeviceName();
     doc["ip"] = WiFi.localIP().toString();
     serializeJson(doc, buf);
-    client.publish(SHARED_TOPIC_DEVICE_BOOT, buf);
+    client.publish(SHARED_DEVICE_BOOT_TOPIC, buf);
   }
 
   void publishLog(const char* level, const char* message) {
@@ -75,20 +75,20 @@ class Networking {
     doc["log_level"] = level;
     doc["message"] = message;
     serializeJson(doc, out);
-    client.publish(SHARED_TOPIC_DEVICE_LOGS, out);
+    client.publish(SHARED_DEVICE_LOGS_TOPIC, out);
   }
 
   void handlePumpCycleComplete(int duration, int eventId) {
     JsonDocument response;
     response["event_id"] = eventId;
-    response["status"] = SHARED_STATUS_COMPLETE;
+    response["status"] = SHARED_WATER_STATUS_COMPLETE;
     response["duration"] = duration;
 
     char buffer[256];
     serializeJson(response, buffer);
     log.info("Publishing handlePumpCycleComplete event");
-    log.info("Topic: %s", SHARED_TOPIC_PUMP_CYCLE_COMPLETE);
-    client.publish(SHARED_TOPIC_PUMP_CYCLE_COMPLETE, buffer);
+    log.info("Topic: %s", SHARED_PUMP_CYCLE_COMPLETE_TOPIC);
+    client.publish(SHARED_PUMP_CYCLE_COMPLETE_TOPIC, buffer);
   }
 
   void publishWaterLevelEvent(char* topic, byte* payload, unsigned int length) {
@@ -106,7 +106,7 @@ class Networking {
 
     // We no longer check sensorNode here.
     // We just emit the event if the action matches.
-    if (action && strcmp(action, SHARED_ACTION_WATER_ON) == 0) {
+    if (action && strcmp(action, SHARED_WATER_ACTION_ON) == 0) {
       log.info("MQTT Command Received: %s (ID: %d, duration_ms: %d)", action, eventId, duration);
 
       for (auto& cb : listeners) {
@@ -174,9 +174,9 @@ class Networking {
     char buffer[256];
     serializeJson(doc, buffer);
     log.info("Publishing water level reading event");
-    log.info("Topic: %s", SHARED_TOPIC_WATER_LEVEL);
-    bool success = client.publish(SHARED_TOPIC_WATER_LEVEL, buffer);
-    log.info("Publish to %s: %s", SHARED_TOPIC_WATER_LEVEL, success ? "OK" : "FAILED");
+    log.info("Topic: %s", SHARED_WATER_LEVEL_TOPIC);
+    bool success = client.publish(SHARED_WATER_LEVEL_TOPIC, buffer);
+    log.info("Publish to %s: %s", SHARED_WATER_LEVEL_TOPIC, success ? "OK" : "FAILED");
     if (!success) {
       publishLog("error", "Failed to publish water level reading");
     }

@@ -9,20 +9,34 @@ const headerPath = path.join(
 
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
+function cppDeclaration(key, value) {
+  const name = `SHARED_${key.toUpperCase()}`;
+  if (typeof value === 'string') {
+    return `static const char* ${name} = "${value}";`;
+  }
+  if (typeof value === 'number') {
+    const type = Number.isInteger(value) ? 'int' : 'double';
+    return `static const ${type} ${name} = ${value};`;
+  }
+  if (typeof value === 'boolean') {
+    return `static const bool ${name} = ${value ? 'true' : 'false'};`;
+  }
+  throw new Error(
+    `gen_hardware_config: unsupported value type for "${key}": ${typeof value}`
+  );
+}
+
+// Constant names are derived directly from the JSON keys, so adding a new
+// field to plant_config.json is enough on its own — no template edit here
+// required to expose it to firmware.
+const declarations = Object.entries(config).map(([key, value]) =>
+  cppDeclaration(key, value)
+);
+
 const header = `#ifndef SHARED_CONSTANTS_H
 #define SHARED_CONSTANTS_H
 
-static const char* SHARED_STATUS_COMPLETE = "${config.water_status_complete}";
-static const char* SHARED_ACTION_WATER_ON = "${config.water_action_on}";
-static const char* SHARED_TOPIC_WATER_LEVEL = "${config.water_level_topic}";
-static const char* SHARED_TOPIC_PUMP = "${config.pump_topic}";
-static const char* SHARED_TOPIC_PUMP_CYCLE_COMPLETE = "${config.pump_cycle_complete_topic}";
-static const char* SHARED_TOPIC_TEMP_1F = "${config.environment_temp_1f_topic}";
-static const char* SHARED_TOPIC_HUMIDITY_1F = "${config.environment_humidity_1f_topic}";
-static const char* SHARED_TOPIC_PRESSURE_1F = "${config.environment_pressure_1f_topic}";
-static const char* SHARED_TOPIC_GAS_1F = "${config.environment_gas_1f_topic}";
-static const char* SHARED_TOPIC_DEVICE_LOGS = "${config.device_logs_topic}";
-static const char* SHARED_TOPIC_DEVICE_BOOT = "${config.device_boot_topic}";
+${declarations.join('\n')}
 
 #endif
 `;

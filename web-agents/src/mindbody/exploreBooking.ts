@@ -90,6 +90,14 @@ export async function bookViaExploreListing(
   // Never guess. A false "booked" is worse than a false failure — the caller
   // can retry a failure, but a person who thinks they're booked when they
   // aren't finds out by not having a reservation when they show up.
+  //
+  // The thrown message is truncated to stay chat-sized, but this ambiguous
+  // case is exactly the one worth full diagnosis (confirmed live: it can
+  // stop mid-wizard on a still-unconfirmed "1. Personal Information" step,
+  // which the previous 300-char slice cut off before showing) — so log the
+  // full body and a screenshot server-side, not just the truncated message.
+  console.error('bookViaExploreListing: ambiguous purchase result\n' + confirmBody);
+  await page.screenshot({ path: '/app/dist/explore-checkout-ambiguous.png' }).catch(() => {});
   throw new Error(`ERROR: Could not confirm the purchase completed. Page: ${confirmBody.slice(0, 300)}`);
 }
 
