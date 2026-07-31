@@ -13,10 +13,12 @@
 #include "shared_constants.h"
 
 // --- Device identity -------------------------------------------------------
-// Overridden at flash time by flash.js via --name / --room build flags, e.g.
-//   npm run env:upload -- --name office_env_sensor --room office
-// The compiled value is written to NVS on every boot and also becomes the
-// mDNS/OTA hostname (<name>.local). Defaults apply if none are supplied.
+// Overridden at flash time by flash.js via --define DEVICE_NAME=... --define
+// ROOM_NAME=... build flags, e.g.
+//   npm run hw:flash:environment-sensor -- --name office_env_sensor --define DEVICE_NAME=office_env_sensor --define ROOM_NAME=office
+// The compiled value is written to NVS on every boot. --name (separate from
+// --define as of pio-flash-cli 0.2.0) becomes the mDNS/OTA hostname
+// (<name>.local). Defaults apply if none are supplied.
 #define STRINGIFY(x) #x
 #define TO_STRING(x) STRINGIFY(x)
 
@@ -107,8 +109,8 @@ void setup() {
 
   logger.info("ESP32-C3 BME680 Node Starting");
 
-  const char* device_name = TO_STRING(DEVICE_NAME);  // set via flash.js --name (default: env_sensor)
-  const char* room_name = TO_STRING(ROOM_NAME);      // set via flash.js --room (default: unknown)
+  const char* device_name = TO_STRING(DEVICE_NAME);  // set via flash.js --define DEVICE_NAME=... (default: env_sensor)
+  const char* room_name = TO_STRING(ROOM_NAME);      // set via flash.js --define ROOM_NAME=... (default: unknown)
   device.begin(device_name, room_name);
 
   Wire.begin(I2C_SDA, I2C_SCL);

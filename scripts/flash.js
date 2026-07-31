@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Usage: node scripts/flash.js --project <name> --fqbn <fqbn>
 //          [--target upload|monitor] [--transport serial|ota]
-//          [--name <device>] [--room <room>] [--port <COMx>] [--host <hostname>]
+//          [--name <device>] [--define KEY=VALUE ...] [--port <COMx>] [--serial <id>] [--host <hostname>]
 //
 // Thin repo-specific wrapper around the pio-flash-cli package (github.com/nries1/pio-flash-cli,
 // a separate repo — see package.json's "pio-flash-cli" dependency): that package knows

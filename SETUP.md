@@ -4,7 +4,7 @@
 
 - [Docker + Docker Compose](https://docs.docker.com/get-docker/)
 - [Node.js 20.x](https://nodejs.org/) + [Yarn 4 via Corepack](https://yarnpkg.com/getting-started/install) — for local development and npm/yarn scripts
-- [PlatformIO CLI](https://docs.platformio.org/en/latest/core/installation/) — for flashing firmware (`pip install platformio`)
+- [PlatformIO CLI](https://docs.platformio.org/en/latest/core/installation/) — for flashing firmware (`brew install platformio` on macOS, or `pip install platformio`)
 - [arduino-cli](https://arduino.github.io/arduino-cli/latest/installation/) — for port detection during flashing
 
 ## 1. Clone & configure
@@ -88,6 +88,8 @@ npm run deploy:remote  # from your laptop: ssh to $SSH_IP in .env, then run the 
 
 ## 5. Flash the hardware
 
+Requires `config.h` from step 1 — the firmware won't compile without it (see Troubleshooting below if you skipped that step).
+
 Connect an ESP32 board via USB, then flash via the `npm run hw:flash:*` shortcuts (thin wrappers around `scripts/device_flash.js`):
 
 ```bash
@@ -99,13 +101,19 @@ npm run hw:flash:rgb-display         # ESP32-S3
 Equivalent direct invocation (useful for extra flags not exposed by the npm scripts, e.g. `--port`):
 
 ```bash
-node scripts/device_flash.js --project plant-node --fqbn esp32:esp32:adafruit_metro_esp32s3 --model "Adafruit Metro ESP32-S3"
+node scripts/device_flash.js --project plant-node --fqbn esp32:esp32:adafruit_metro_esp32s3 --model "Adafruit Metro ESP32-S3" --port /dev/cu.usbserial-XXXX
 ```
 
 To see what boards are connected:
 
 ```bash
 npm run hw:boards   # arduino-cli board list
+```
+
+If more than one physical unit runs the same sketch, pass identity in at flash time as compile-time build flags (`pio-flash-cli` >= 0.2.0's `--define KEY=VALUE`, repeatable):
+
+```bash
+npm run hw:flash:plant-node -- --define DEVICE_NAME=office_tower --define ROOM_NAME=office
 ```
 
 To monitor serial output instead of flashing:
@@ -121,6 +129,8 @@ npm run hw:monitor:plant-node -- --transport ota --name <device>
 ```
 
 (OTA requires `avahi-daemon` on Linux to resolve `<device>.local` — see the main project docs.)
+
+> **Note:** both flashing and monitoring need a real interactive terminal — running either through a non-interactive shell/automation will fail (monitor especially, with a `termios` error) since PlatformIO attaches a live terminal session to the serial port.
 
 ## 6. Enroll faces (robot vision, optional)
 
@@ -166,7 +176,15 @@ Note: RedwoodJS's default production log level is `warn` — `redwood`'s info/de
 
 ## Troubleshooting
 
-**Board not detected during flash:** Run `arduino-cli board list` and verify it recognizes the board. The board FQBN must match what's passed to `device_flash.js`. Some community boards (like the ESP32-C3 Super Mini) require installing third-party board definitions first: `arduino-cli core install esp32:esp32`.
+**`Cannot find pio. Install PlatformIO or add it to PATH.`:** PlatformIO CLI isn't installed (`brew install platformio` or `pip install platformio` — see Prerequisites). This is separate from `arduino-cli`, which only handles port detection; you need both.
+
+**`No esp32:esp32 board detected on any serial port.`, but `arduino-cli board list` does show your board:** Check the board's `protocol_label`/`properties` in `arduino-cli board list --format json`. Boards that use an external USB-to-serial bridge (CH340, CP2102/CP2104 — identifiable by VID `0x1A86` or `0x10C4`) report no board info to `arduino-cli` at all, not even a generic match, so auto-detection can never find them — this isn't a misconfiguration, just a limitation of USB-bridge boards. Pass the port explicitly: `--port /dev/cu.usbserial-XXXX` (macOS/Linux) or `--port COMx` (Windows).
+
+**Board not detected during flash (and the port doesn't show up in `arduino-cli board list` at all):** Verify the FQBN's core matches what's passed to `device_flash.js`. Some community boards (like the ESP32-C3 Super Mini) require installing third-party board definitions first: `arduino-cli core install esp32:esp32`.
+
+**Compile errors like `'WIFI_SSID' was not declared in this scope` / `'MQTT_HOST' was not declared in this scope`:** `hardware/lib/shared/config.h` is missing — it's gitignored and not created by `yarn install`. Go back to step 1: `cp hardware/lib/shared/config.h.example hardware/lib/shared/config.h` and fill in your values.
+
+**`Could not log release: Docker/DB unavailable`:** Harmless if you're flashing from a laptop that isn't running the Docker stack — release logging to Postgres is best-effort by design and never blocks the flash. Only worth investigating if you expected `docker compose` to be up.
 
 **Database connection errors (`redwood` container crash-looping with a Prisma `P1010` "denied access" error):** This means `REDWOOD_POSTGRES_USER`/`PASSWORD`/`DB` in `.env` don't match what the `redwood-db` volume was actually initialized with. Since these vars aren't in `.env.example`, it's easy for them to go missing or drift — and unlike a fresh setup, you can't just pick new values once the volume already has data (Postgres only applies `POSTGRES_*` env vars on first init of an empty data directory). If you don't know the original credentials, you can often recover them without data loss: any role that already exists in the database will authenticate over the local Docker network without you needing to touch pg_hba — the trick is finding a role name that exists (try values matching the legacy `db` service's credentials first, as they're sometimes reused). Once logged in, `\du` and `\l` will show you the real role and database names to put back into `.env`.
 

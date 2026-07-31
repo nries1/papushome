@@ -8,8 +8,10 @@
 #include "sensor.h"
 
 // --- Device identity -------------------------------------------------------
-// Overridden at flash time via flash.js --name / --room build flags; --name also
-// sets the OTA host (<name>.local). Defaults preserve the original values.
+// Overridden at flash time via flash.js --define DEVICE_NAME=... --define
+// ROOM_NAME=... build flags; pass --name separately to also set the OTA host
+// (<name>.local) — --name and --define are independent as of pio-flash-cli
+// 0.2.0. Defaults preserve the original values.
 #define STRINGIFY(x) #x
 #define TO_STRING(x) STRINGIFY(x)
 
@@ -40,8 +42,8 @@ void setup() {
   Serial.println("PORT OPENED SUCCESSFULLY");
   Serial.println("=====================");
 
-  const char* device_name = TO_STRING(DEVICE_NAME);  // set via flash.js --name (default: office_tower)
-  const char* room_name = TO_STRING(ROOM_NAME);      // set via flash.js --room (default: office)
+  const char* device_name = TO_STRING(DEVICE_NAME);  // set via flash.js --define DEVICE_NAME=... (default: office_tower)
+  const char* room_name = TO_STRING(ROOM_NAME);      // set via flash.js --define ROOM_NAME=... (default: office)
   device.begin(device_name, room_name);
   // Display::begin() will initialize and scan I2C on the Metro pins.
 
