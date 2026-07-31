@@ -37,7 +37,7 @@ Edit `config.h` — set your WiFi credentials, server IP, and the same `DISPLAY_
 npm run docker:up   # docker compose up -d
 ```
 
-This starts: the RedwoodJS app (`redwood`, port 80 — API + web in one process), `redwood-db` (Postgres 15 + pgvector), `mqtt-broker`, `homeassistant`, and `web-agents`. Database migrations apply automatically on container start.
+This starts: the RedwoodJS app (`redwood`, port 80 — API + web in one process), `redwood-db` (Postgres 15 + pgvector), `mqtt-broker`, and `homeassistant`. Database migrations apply automatically on container start.
 
 The dashboard will be available at `http://YOUR_SERVER_IP`.
 

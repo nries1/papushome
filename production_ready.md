@@ -35,28 +35,10 @@
      - Standardized `book_tabata_class`/`book_yoga_class` in `chatToolExecutor.ts` to always guarantee the `ERROR:` prefix on failure (previously relied on the raw thrown message already starting with it, which happened to hold but wasn't enforced) — this is what the new guardrail keys off.
      - Type-checked clean (`yarn rw type-check api`), rebuilt and restarted `redwood`.
    - **Widened diagnostics for the checkout automation itself** (still open): `exploreBooking.ts`'s ambiguous-purchase branch now logs the *full* page body server-side and takes a screenshot (`/app/dist/explore-checkout-ambiguous.png`, same pattern as `bookClass.ts`'s existing debug screenshots) before throwing the same (still 300-char, chat-sized) error message — so the next real attempt will show definitively whether it's a multi-step wizard or the reCAPTCHA rejection from #7, instead of a truncated guess. Rebuilt and restarted `web-agents`. **Not yet re-tested live** — next real booking attempt (user-approved) should confirm which it is and inform the actual fix.
-
-# Test plan: verify web-agents booking reliability (do this in a fresh, separate session)
-
-Today's hardening pass (session persistence, humanized interactions, headed browser + noVNC — see Issue #7) couldn't be cleanly verified against the actual reCAPTCHA rejection rate: dozens of live hits against MindBody in one sitting made it impossible to tell a real fix from the site's own rate-limiting/reputation response kicking in. Do this instead:
-
-1. **Space it out.** One or two real purchase attempts, hours or a day apart from today's testing and from each other — not a rapid-fire loop. Every attempt is a real reCAPTCHA scoring event against the real site.
-2. **Watch it live first.** Open `http://<tailscale-ip>:6080/vnc.html` before triggering a booking, so you see the browser navigate/login/click in real time instead of only reading the final result.
-3. **Consider warming the session by hand.** Through the noVNC-visible browser, manually click through a real MindBody login once yourself before the first automated attempt, so the persisted session (`web_agent_sessions` table, profile `"mindbody"`) carries genuine human-driven login history rather than only ever having been logged in by automation.
-4. **Pick a throwaway class/date** — something you don't actually need, far enough out that a real success doesn't create an unwanted commitment, still covered by the existing pass (so a real success costs nothing).
-5. **Trigger it** — either ask papu to book it through chat (exercises the full path, including what the LLM actually relays), or hit the endpoint directly:
-   ```bash
-   docker run --rm --network papushome_default curlimages/curl -s -X POST http://web-agents:3001/book-tabata \
-     -H "Content-Type: application/json" \
-     -d '{"date":"<iso-date>","className":"Tabata","preferredTime":"<time>"}'
-   ```
-6. **Check ground truth independently, every time** — regardless of what the tool reports, confirm via MindBody's own account page (`https://www.mindbodyonline.com/explore/account/schedule`) whether a reservation actually exists. Don't just trust the returned message — that's the whole point of this exercise.
-7. **Confirm session persistence is actually being used**:
-   ```bash
-   set -a && source .env && set +a && docker compose exec -T redwood-db psql -U "$REDWOOD_POSTGRES_USER" -d "$REDWOOD_POSTGRES_DB" \
-     -c "SELECT profile, updated_at, jsonb_array_length(storage_state->'cookies') AS n_cookies FROM web_agent_sessions;"
-   ```
-8. **If it still fails every time** with the same "We're unable to complete your order..." rejection, that's a real signal the hardening alone isn't enough. Honest next options at that point: (a) accept automated purchases don't work reliably here and keep the safe-failure behavior (already solid — it will never lie about success) as the permanent state, or (b) go further — browser fingerprint diversity, solving an interactive challenge once per profile instead of relying on invisible scoring, etc. — meaningfully bigger scope, worth a real discussion before starting rather than assuming it's wanted.
+10. `web-agents` (browser automation, Issues #7/#9) never got past "never lies about success" — the underlying reCAPTCHA Enterprise rejection was never actually solved. **Retired the whole approach** rather than keep hardening it: deleted `web-agents/` (Playwright, the unshipped Stagehand/Browserbase prototype, Xvfb/noVNC, the `WebAgentSession` session-persistence table) and its `docker-compose.yml` service, and replaced `book_yoga_class`/`book_tabata_class` with a direct Mindbody **Public API v6** client (`api/src/lib/mindbody.ts`) — no browser, no bot-detection surface at all. Confirmed the $/call partnership-fee blocker noted in Nice-to-haves #5 doesn't apply to `usertoken/issue` + `class/classes` + `class/addclienttoclass` on a normal developer account; verified end-to-end against Mindbody's public sandbox (`SiteId -99`) with real token issuance, a live class search, and a `Test:true` dry-run booking that returned `Action: "Added"`.
+    - `chatToolExecutor.ts`'s two booking cases now call `bookYogaClass`/`bookTabataClass` directly instead of `fetch`-ing `http://web-agents:3001/...`; the `ERROR:`-prefix contract from #9's guardrail is unchanged, so `chatContext.ts`'s `BOOKING_TOOLS`/`CLAIMS_SUCCESS` logic needed no changes.
+    - New env vars (`.env.example`): `MINDBODY_API_KEY` (shared), `MINDBODY_SITE_ID`/`_USERNAME`/`_PASSWORD` (shared defaults) with optional `MINDBODY_Y7_*`/`MINDBODY_TABATA_*` per-studio overrides, plus `MINDBODY_CLIENT_ID`/`_CLIENT_SEARCH_TEXT` to pick which client record gets booked.
+    - **Open gap, same shape as the old $/booking-fee blocker**: the Public API's `usertoken/issue` needs a *staff*-level login at the studio's own Mindbody site (confirmed live — the response's `User.Type` is `"Staff"`, and there's no client/consumer token type), not the personal consumer login (`MINDBODY_USERNAME`/`PASSWORD`, real Y7/Tabata account) that used to sign into the browser flow. Real Y7/Tabata bookings need each studio to actually issue staff-level API credentials — currently only the shared Mindbody sandbox (`SiteId -99`) is wired up and tested; `.env`'s `MINDBODY_*` vars point at sandbox data, not real classes, until that's sorted out.
 
 
 # Follow-ups
@@ -112,7 +94,7 @@ Used the OTA upload command above for real to flash the Sensor Health heartbeat 
 6. ~~`scripts/log_release.js` (invoked by every `device_flash.js` run) shells out to `docker exec home-db-1 psql -U user -d plants ...` — `home-db-1` and those credentials are the legacy pre-migration stack (see `redwoodmigration.md`); the actual container is `papushome-redwood-db-1` with `REDWOOD_POSTGRES_*` creds. Confirmed no `home-db-1` container exists (`docker ps`). Every hardware flash has been silently failing to record a `hardware_releases` row — masked by the script's intentionally best-effort `catch` (warns, exits 0) so uploads still succeed, but release history for every flash to date is just missing.~~ **DONE** — now targets `papushome-redwood-db-1` and reads `REDWOOD_POSTGRES_USER`/`REDWOOD_POSTGRES_DB` from `.env` (a tiny inline parser, not a new `dotenv` dependency, since real env vars still take precedence and this is a standalone script outside the app's own env loading). Verified live end-to-end: ran `node scripts/log_release.js --version "v0.0.test-verify" --model "Test Model"`, confirmed a real row landed in `hardware_releases` via direct `psql`, then deleted that test row.
 
 # Nice to have for marketing this as an open source project
-1. Add more services to web-agents (book flights, buy from amazon, play and suggest music, etc.)
+1. Add more booking/service integrations alongside `api/src/lib/mindbody.ts` (book flights, buy from amazon, play and suggest music, etc.) — now that Mindbody booking doesn't need browser automation (see Issue #10), prefer a real API client per service over reviving `web-agents`-style scraping where one exists.
 2. Working physical robot
 3. High quality demo video
 4. Onboarding UI flow for the robot (interview questions, model selection, service selection (e.g. mind-body, wyze, etc.))

@@ -17,6 +17,7 @@ import {
 } from 'src/lib/homeActions'
 import type { LightCommand } from 'src/lib/homeActions'
 import { moduleLogger } from 'src/lib/logger'
+import { bookYogaClass, bookTabataClass } from 'src/lib/mindbody'
 import { getEmbedding } from 'src/lib/ollama'
 import { createHomeKnowledge } from 'src/services/homeKnowledge/create'
 import { deleteHomeKnowledge } from 'src/services/homeKnowledge/delete'
@@ -101,46 +102,24 @@ async function executeToolInner(
       if (!args.date) {
         return 'Cannot book: date is required. Ask the user to clarify.'
       }
-      try {
-        const res = await fetch('http://web-agents:3001/book-tabata', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            date: args.date,
-            className: args.class_name || 'Tabata',
-            preferredTime: args.preferred_time,
-          }),
-        })
-        const json = (await res.json()) as { success: boolean; message: string }
-        if (json.success) return json.message ?? 'Booked.'
-        const failMessage = json.message ?? 'Booking failed.'
-        return failMessage.startsWith('ERROR') ? failMessage : `ERROR: ${failMessage}`
-      } catch (err) {
-        return `ERROR: Booking service error: ${err instanceof Error ? err.message : String(err)}`
-      }
+      const result = await bookTabataClass(
+        args.date as string,
+        (args.class_name as string) || 'Tabata',
+        args.preferred_time as string | undefined
+      )
+      return result.message
     }
 
     case 'book_yoga_class': {
       if (!args.date) {
         return 'Cannot book: date is required. Ask the user to clarify.'
       }
-      try {
-        const res = await fetch('http://web-agents:3001/book-yoga', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            date: args.date,
-            className: args.class_name || 'WeFlowHard',
-            preferredTime: args.preferred_time,
-          }),
-        })
-        const json = (await res.json()) as { success: boolean; message: string }
-        if (json.success) return json.message ?? 'Booked.'
-        const failMessage = json.message ?? 'Booking failed.'
-        return failMessage.startsWith('ERROR') ? failMessage : `ERROR: ${failMessage}`
-      } catch (err) {
-        return `ERROR: Booking service error: ${err instanceof Error ? err.message : String(err)}`
-      }
+      const result = await bookYogaClass(
+        args.date as string,
+        (args.class_name as string) || 'WeFlowHard',
+        args.preferred_time as string | undefined
+      )
+      return result.message
     }
 
     case 'water_plants': {

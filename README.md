@@ -58,7 +58,7 @@ corepack enable
 yarn install
 
 # Start the server stack: the RedwoodJS app (GraphQL API + web, one process),
-# Postgres, MQTT, Home Assistant, and web-agents
+# Postgres, MQTT, and Home Assistant
 npm run docker:up
 ```
 
@@ -128,7 +128,6 @@ MacBook webcam
 | `redwood`              | 80 (→ 8911) | RedwoodJS app — GraphQL API + built web assets, one process  |
 | `redwood-db`           | 5433        | Postgres 15 + pgvector, backs the RedwoodJS/Prisma app        |
 | `mqtt-broker`          | 1883 / 9001 | Eclipse Mosquitto                                             |
-| `web-agents`           | 3001        | Playwright/Express service for scripted bookings (MindBody)   |
 | `homeassistant`        | 8123        | Home Assistant                                                |
 | `ollama`               | 11434       | Local LLM (GPU profile)                                       |
 | `kokoro`               | —           | Local TTS (GPU profile)                                       |
