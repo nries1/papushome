@@ -85,8 +85,13 @@ export async function runChatTurn(
   // book_tabata_class ERROR). Prompting alone didn't stop it, so track real
   // booking failures this turn and override the final reply deterministically
   // if it still claims success despite one.
-  const BOOKING_TOOLS = new Set(['book_tabata_class', 'book_yoga_class'])
-  const CLAIMS_SUCCESS = /\b(successfully|is booked|has been booked|you'?re (all set|booked)|added to your calendar|booking (was |is )?complete)\b/i
+  const BOOKING_TOOLS = new Set([
+    'book_tabata_class',
+    'book_yoga_class',
+    'book_dental_appointment',
+  ])
+  const CLAIMS_SUCCESS =
+    /\b(successfully|is booked|has been booked|you'?re (all set|booked)|added to your calendar|booking (was |is )?complete)\b/i
   let bookingFailedThisTurn = false
 
   for (let round = 0; round < 5; round++) {

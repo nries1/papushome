@@ -192,6 +192,41 @@ const ACTION_TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'list_dental_appointments',
+      description: "List the household's upcoming dental appointments (Tend).",
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'book_dental_appointment',
+      description:
+        'Book a dental appointment at Tend. Use when the user asks to book, reserve, or schedule a dentist/dental appointment.',
+      parameters: {
+        type: 'object',
+        properties: {
+          date: {
+            type: 'string',
+            description: 'ISO date string, e.g. "2026-07-04"',
+          },
+          service: {
+            type: 'string',
+            description:
+              'Service type code. Defaults to "CLNCHK" (routine cleaning/exam) if not specified. Only override if the user asks for something else specific, e.g. "EMGNCY" for an emergency visit.',
+          },
+          preferred_time: {
+            type: 'string',
+            description: 'Optional preferred time, e.g. "2:00 PM"',
+          },
+        },
+        required: ['date'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'update_knowledge',
       description:
         'Add, update, or delete a fact in the home knowledge base. Use when the user explicitly asks to remember, update, or forget something.',
@@ -248,5 +283,7 @@ export const TOOL_NAMES = new Set([
   'update_knowledge',
   'book_yoga_class',
   'book_tabata_class',
+  'list_dental_appointments',
+  'book_dental_appointment',
   'add_calendar_event',
 ])

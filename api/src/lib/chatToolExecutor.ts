@@ -19,6 +19,10 @@ import type { LightCommand } from 'src/lib/homeActions'
 import { moduleLogger } from 'src/lib/logger'
 import { bookYogaClass, bookTabataClass } from 'src/lib/mindbody'
 import { getEmbedding } from 'src/lib/ollama'
+import {
+  listDentalAppointments,
+  bookDentalAppointment,
+} from 'src/lib/tendBooking'
 import { createHomeKnowledge } from 'src/services/homeKnowledge/create'
 import { deleteHomeKnowledge } from 'src/services/homeKnowledge/delete'
 import { searchHomeKnowledgeRows } from 'src/services/homeKnowledge/get'
@@ -117,6 +121,22 @@ async function executeToolInner(
       const result = await bookYogaClass(
         args.date as string,
         (args.class_name as string) || 'WeFlowHard',
+        args.preferred_time as string | undefined
+      )
+      return result.message
+    }
+
+    case 'list_dental_appointments': {
+      return await listDentalAppointments()
+    }
+
+    case 'book_dental_appointment': {
+      if (!args.date) {
+        return 'Cannot book: date is required. Ask the user to clarify.'
+      }
+      const result = await bookDentalAppointment(
+        args.date as string,
+        (args.service as string) || undefined,
         args.preferred_time as string | undefined
       )
       return result.message

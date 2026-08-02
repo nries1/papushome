@@ -11,6 +11,7 @@
     "googleapis": "^173.0.0",
     "mqtt": "^5.15.2",
     "node-ical": "^0.26.1",
-    "systeminformation": "^5.23.8"
+    "systeminformation": "^5.23.8",
+    "tend-mcp": "^0.1.0"
   }
 }
