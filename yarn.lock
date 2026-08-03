@@ -6927,7 +6927,7 @@ __metadata:
     mqtt: "npm:^5.15.2"
     node-ical: "npm:^0.26.1"
     systeminformation: "npm:^5.23.8"
-    tend-mcp: "npm:^0.1.0"
+    tend-mcp: "npm:^0.1.2"
   languageName: unknown
   linkType: soft
 
@@ -17734,16 +17734,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tend-mcp@npm:^0.1.0":
-  version: 0.1.0
-  resolution: "tend-mcp@npm:0.1.0"
+"tend-mcp@npm:^0.1.2":
+  version: 0.1.2
+  resolution: "tend-mcp@npm:0.1.2"
   dependencies:
     "@modelcontextprotocol/server": "npm:^2.0.0"
     axios: "npm:^1.18.1"
     zod: "npm:^4.4.3"
   bin:
     tend-mcp: dist/index.js
-  checksum: 10c0/82bfb71346f1c4a83c0dd834f1b5f2d4a25a2da851fd5f62c8ec084251c37d548b2e05c3c376e95aa8d01fdaf80a79e5842463b9468bae9df39c445bef5785ec
+  checksum: 10c0/03e0a836f6de8d11f953a0a7cd66835095d3626f90ee10cb6457ed337efcbd6da7d32187595e161a0bab5e4545f0f95533847d42ef7aeffa1ac7dd174d9b1b69
   languageName: node
   linkType: hard
 
