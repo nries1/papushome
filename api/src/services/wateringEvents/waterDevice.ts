@@ -1,10 +1,8 @@
 import type { MutationResolvers } from 'types/graphql'
 
 import { context } from '@redwoodjs/context'
-import { UserInputError } from '@redwoodjs/graphql-server'
 
 import type { CurrentUser } from 'src/lib/auth'
-import { db } from 'src/lib/db'
 import { publishWaterCommand } from 'src/lib/mqtt'
 import { createWateringEvent } from 'src/services/wateringEvents/create'
 
@@ -30,23 +28,6 @@ export const waterDevice: NonNullable<MutationResolvers['waterDevice']> = async 
     Math.min(MAX_DURATION_SECONDS, Math.round(durationSeconds))
   )
 
-  // Direct Prisma read rather than the wateringEvents/latestWateringEvents
-  // resolvers — same precedent as homeActions.ts's waterPlants() (GraphQL
-  // list-resolver elements are individually T | Promise<T> and break direct
-  // property access on the result).
-  const last = await db.wateringEvent.findFirst({
-    where: { deviceId },
-    orderBy: { timestamp: 'desc' },
-  })
-  if (
-    last?.status === SHARED.water_status_complete &&
-    last.timestamp &&
-    Date.now() - last.timestamp.getTime() <
-      SHARED.pump_cycle_cooldown_hours * 60 * 60 * 1000
-  ) {
-    throw new UserInputError('Too soon to water — within the cooldown window.')
-  }
-
   // The old route derived userEmail from the (trusted, server-set)
   // req.userEmail rather than accepting it from the client — same here,
   // via context.currentUser rather than a client-supplied field.
@@ -61,8 +42,6 @@ export const waterDevice: NonNullable<MutationResolvers['waterDevice']> = async 
     },
   })
 
-  // publishWaterCommand has its own low-water safety block (canWaterPlants)
-  // independent of the cooldown check above.
   const sent = await publishWaterCommand({
     event_id: created.id,
     device_id: deviceId,

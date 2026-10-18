@@ -287,25 +287,6 @@ function getTopicName(deviceId: string): string {
   return SHARED.pump_topic_template.replace('{device_id}', deviceId)
 }
 
-async function canWaterPlants(deviceId: string): Promise<boolean> {
-  // Direct Prisma query rather than reusing the `tankReadings` resolver:
-  // GraphQL resolver return types allow each array element to individually
-  // be `T | Promise<T>` (ResolverTypeWrapper), which breaks direct property
-  // access like `readings[0].pctFull` even after awaiting the outer call.
-  // Fine for the other reused resolvers below since this file only awaits
-  // them for their side effects and never reads fields off the result.
-  try {
-    const latest = await db.tankReading.findFirst({
-      where: { deviceId },
-      orderBy: { timestamp: 'desc' },
-    })
-    return (latest?.pctFull ?? 0) > 4 // percentage-based; tank-size-agnostic
-  } catch (err) {
-    hwLogger.error({ err, deviceId }, 'Failed to fetch water level data')
-    return false
-  }
-}
-
 export function publishLearnFrame(name: string, imageBase64: string): boolean {
   if (!client.connected) return false
   const payload = JSON.stringify({ name, frame: imageBase64 })
@@ -322,20 +303,6 @@ export async function publishWaterCommand(
     action,
     duration_ms: durationMs,
   } = payload
-
-  const safe = await canWaterPlants(deviceId)
-  if (!safe) {
-    hwLogger.warn({ eventId, deviceId }, 'Safety Block: Tank level too low')
-    try {
-      await updateWateringEvent({
-        id: eventId,
-        input: { durationMs: 0, status: 'BLOCKED_LOW_WATER' },
-      })
-    } catch (err) {
-      hwLogger.error({ err, eventId }, 'Failed to record blocked water event')
-    }
-    return false
-  }
 
   if (client.connected) {
     const topicName = getTopicName(deviceId)

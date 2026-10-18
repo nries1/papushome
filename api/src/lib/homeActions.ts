@@ -148,26 +148,6 @@ export async function waterPlants(): Promise<ActionResult> {
   for (const device of pumps) {
     const name = device.friendlyName || device.deviceId
 
-    // Check cooldown — direct Prisma query rather than the wateringEvents
-    // list resolver, since GraphQL list-resolver elements are individually
-    // `T | Promise<T>` and break direct property access (see src/lib/mqtt.ts
-    // canWaterPlants for the same precedent).
-    const last = await db.wateringEvent.findFirst({
-      where: { deviceId: device.deviceId },
-      orderBy: { timestamp: 'desc' },
-    })
-    if (last?.status === SHARED.water_status_complete && last.timestamp) {
-      const hoursSince = (Date.now() - last.timestamp.getTime()) / (1000 * 60 * 60)
-      if (hoursSince < SHARED.pump_cycle_cooldown_hours) {
-        const minutesAgo = Math.round(hoursSince * 60)
-        const hoursLeft = (SHARED.pump_cycle_cooldown_hours - hoursSince).toFixed(1)
-        lines.push(
-          `${name}: skipped — watered ${minutesAgo} min ago (${hoursLeft} hrs until next cycle allowed)`
-        )
-        continue
-      }
-    }
-
     // Schedule the event
     const created = await createWateringEvent({
       input: {
@@ -178,7 +158,6 @@ export async function waterPlants(): Promise<ActionResult> {
       },
     })
 
-    // Publish — publishWaterCommand has its own low-water safety block
     const sent = await publishWaterCommand({
       event_id: created.id,
       device_id: device.deviceId,
